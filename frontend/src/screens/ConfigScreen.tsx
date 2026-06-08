@@ -31,7 +31,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
   const [pensionGrowthRate, setPensionGrowthRate] = useState(5.0);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [activeTheme, setActiveTheme] = useState<string>(() => {
-    return localStorage.getItem('money-hub-theme') || 'dark-neon';
+    return localStorage.getItem('money-hub-theme') || 'light';
   });
 
   // Credentials state

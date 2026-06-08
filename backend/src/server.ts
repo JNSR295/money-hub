@@ -10,6 +10,7 @@ import { encrypt, decrypt } from './utils/crypto';
 import { getTrueLayerAccounts, getTrueLayerCards, getMockAccounts, getMockCards } from './services/truelayer';
 import { getTrading212Portfolio } from './services/t212';
 import { getPayPalBalance } from './services/paypal';
+import axios from 'axios';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -1042,6 +1043,43 @@ app.delete('/api/budget/bills/:id', requireAuth, async (req: Request, res: Respo
     res.json({ success: true, message: 'Bill deleted successfully.' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete bill.' });
+  }
+});
+
+app.get('/api/logo', async (req: Request, res: Response) => {
+  const { domain } = req.query;
+  if (!domain || typeof domain !== 'string') {
+    return res.status(400).json({ error: 'Domain is required' });
+  }
+
+  const apiKey = process.env.LOGODEV_API_KEY;
+  if (!apiKey) {
+    // Fallback if no API key is provided
+    return res.redirect(`https://logo.clearbit.com/${domain}`);
+  }
+
+  try {
+    const response = await axios({
+      method: 'get',
+      url: `https://img.logo.dev/${domain}?token=${apiKey}`,
+      responseType: 'stream',
+      timeout: 5000
+    });
+
+    const contentType = response.headers['content-type'];
+    res.setHeader('content-type', contentType ? String(contentType) : 'image/png');
+
+    const cacheControl = response.headers['cache-control'];
+    if (cacheControl) {
+      res.setHeader('cache-control', String(cacheControl));
+    } else {
+      res.setHeader('cache-control', 'public, max-age=86400');
+    }
+
+    response.data.pipe(res);
+  } catch (error) {
+    // Fallback to clearbit on error
+    return res.redirect(`https://logo.clearbit.com/${domain}`);
   }
 });
 

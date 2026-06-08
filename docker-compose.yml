@@ -29,6 +29,7 @@ services:
       - SESSION_SECRET=supersecret_session_key_for_wealthhub
       - NODE_ENV=development
       - FRONTEND_URL=http://localhost:3002
+      - LOGODEV_API_KEY=${LOGODEV_API_KEY:-}
     depends_on:
       - db
 

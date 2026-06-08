@@ -565,7 +565,7 @@ function BudgetScreen() {
                           </div>
                         ) : (
                           <img 
-                            src={`https://logo.clearbit.com/${billInfo.domain}`}
+                            src={`${axios.defaults.baseURL || ''}/api/logo?domain=${billInfo.domain}`}
                             alt=""
                             className="supplier-logo"
                             onError={(e) => {

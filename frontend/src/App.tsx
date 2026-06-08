@@ -42,7 +42,7 @@ function App() {
 
   // Verify session on mount and apply theme
   useEffect(() => {
-    const savedTheme = localStorage.getItem('money-hub-theme') || 'dark-neon';
+    const savedTheme = localStorage.getItem('money-hub-theme') || 'light';
     document.body.className = '';
     if (savedTheme !== 'dark-neon') {
       document.body.classList.add(`theme-${savedTheme}`);
