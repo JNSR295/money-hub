@@ -488,7 +488,7 @@ app.get('/api/config/settings', requireAuth, async (req: Request, res: Response)
 // Initiate TrueLayer OAuth Link
 app.get('/api/truelayer/connect', requireAuth, async (req: Request, res: Response) => {
   const userId = req.session.userId!;
-  const redirectUri = req.query.redirect_uri as string || 'http://localhost:3000/settings';
+  const redirectUri = req.query.redirect_uri as string || 'http://localhost:3002';
 
   try {
     // Get client id

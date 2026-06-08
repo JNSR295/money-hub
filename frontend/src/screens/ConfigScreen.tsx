@@ -95,7 +95,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
       try {
         await axios.post('/api/truelayer/callback', {
           code,
-          redirectUri: window.location.origin + '/settings' // matches current page
+          redirectUri: window.location.origin // matches current page
         });
         setMessage({ text: 'TrueLayer banking linked successfully!', isError: false });
         fetchSettingsAndStatus();
@@ -168,7 +168,8 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
   const handleTrueLayerConnect = async () => {
     setMessage(null);
     try {
-      const response = await axios.get(`/api/truelayer/connect?redirect_uri=${encodeURIComponent(window.location.href)}`);
+      const redirectUrl = window.location.origin;
+      const response = await axios.get(`/api/truelayer/connect?redirect_uri=${encodeURIComponent(redirectUrl)}`);
       // Redirect to TrueLayer OAuth page
       window.location.href = response.data.authUrl;
     } catch (err: any) {

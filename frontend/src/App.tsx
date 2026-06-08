@@ -32,7 +32,13 @@ interface User {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code')) {
+      return 'config';
+    }
+    return 'dashboard';
+  });
 
   // Verify session on mount and apply theme
   useEffect(() => {
