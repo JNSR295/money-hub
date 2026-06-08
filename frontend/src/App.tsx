@@ -21,7 +21,8 @@ import LoginScreen from './screens/LoginScreen';
 
 // Configure Axios defaults for session cookies
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+// Dynamically determine the backend base URL based on the browser's current hostname
+axios.defaults.baseURL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
 interface User {
   email: string;
