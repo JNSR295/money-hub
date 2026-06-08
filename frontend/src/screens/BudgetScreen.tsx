@@ -60,10 +60,13 @@ function BudgetScreen() {
   const [billDurationType, setBillDurationType] = useState('forever'); // 'forever' or 'fixed'
   const [billDurationMonths, setBillDurationMonths] = useState('');
   const [billStartDate, setBillStartDate] = useState('');
-  const [billDomain, setBillDomain] = useState(''); // Clearbit website logo mapping
   const [outgoingCategory, setOutgoingCategory] = useState('bill'); // 'bill', 'saving', 'other'
   const [targetAccountId, setTargetAccountId] = useState('');
   const [isAddingBill, setIsAddingBill] = useState(false);
+
+  // Pagination for budget matrix
+  const [startIdx, setStartIdx] = useState(12); // default to current month (index 12)
+  const WINDOW_SIZE = 6;
 
   // Connected accounts state (for savings routing target)
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -103,9 +106,8 @@ function BudgetScreen() {
     setIsAddingBill(true);
     try {
       const isSaving = outgoingCategory === 'saving';
-      const domainSuffix = (!isSaving && billDomain.trim()) ? ` [${billDomain.trim().toLowerCase()}]` : '';
       await axios.post('/api/budget/bills', {
-        name: isSaving ? billName.trim() : `${billName.trim()}${domainSuffix}`,
+        name: billName.trim(),
         amount: parseFloat(billAmount),
         duration_type: billDurationType,
         duration_months: billDurationType === 'fixed' ? parseInt(billDurationMonths) : null,
@@ -120,7 +122,6 @@ function BudgetScreen() {
       setBillDurationType('forever');
       setBillDurationMonths('');
       setBillStartDate('');
-      setBillDomain('');
       fetchBudgetData();
     } catch (err) {
       console.error(err);
@@ -145,6 +146,64 @@ function BudgetScreen() {
     if (match) {
       return { name: match[1], domain: match[2] };
     }
+    
+    // Clean name
+    const cleanedName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Check if there is a match in our mapping dictionary
+    const DOMAIN_LOOKUPS: { [key: string]: string } = {
+      netflix: 'netflix.com',
+      spotify: 'spotify.com',
+      lloyds: 'lloydsbank.com',
+      barclays: 'barclays.co.uk',
+      hsbc: 'hsbc.co.uk',
+      santander: 'santander.co.uk',
+      halifax: 'halifax.co.uk',
+      monzo: 'monzo.com',
+      revolut: 'revolut.com',
+      starling: 'starlingbank.com',
+      trading212: 'trading212.com',
+      t212: 'trading212.com',
+      paypal: 'paypal.com',
+      amazon: 'amazon.co.uk',
+      github: 'github.com',
+      apple: 'apple.com',
+      google: 'google.com',
+      microsoft: 'microsoft.com',
+      aviva: 'aviva.co.uk',
+      ee: 'ee.co.uk',
+      vodafone: 'vodafone.co.uk',
+      o2: 'o2.co.uk',
+      three: 'three.co.uk',
+      giffgaff: 'giffgaff.com',
+      sky: 'sky.com',
+      virgin: 'virginmedia.com',
+      bt: 'bt.com',
+      octopus: 'octopus.energy',
+      britishgas: 'britishgas.co.uk',
+      edf: 'edfenergy.com',
+      eon: 'eonnext.com',
+      uber: 'uber.com',
+      deliveroo: 'deliveroo.co.uk',
+      gym: 'thegymgroup.com',
+      puregym: 'puregym.com',
+      strava: 'strava.com',
+      adobe: 'adobe.com',
+      figma: 'figma.com',
+      slack: 'slack.com',
+      zoom: 'zoom.us',
+      notion: 'notion.so',
+      chase: 'chase.co.uk',
+      natwest: 'natwest.com',
+      nationwide: 'nationwide.co.uk'
+    };
+
+    for (const key in DOMAIN_LOOKUPS) {
+      if (cleanedName.includes(key)) {
+        return { name: fullName, domain: DOMAIN_LOOKUPS[key] };
+      }
+    }
+    
     // Fallback: guess domain based on first word
     const firstWord = fullName.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
     return { name: fullName, domain: `${firstWord}.com` };
@@ -289,18 +348,7 @@ function BudgetScreen() {
                     ))}
                   </select>
                 </div>
-              ) : (
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Website Domain (for logo)</label>
-                  <input 
-                    type="text" 
-                    placeholder="netflix.com" 
-                    className="form-input" 
-                    value={billDomain} 
-                    onChange={(e) => setBillDomain(e.target.value)} 
-                  />
-                </div>
-              )}
+              ) : null}
             </div>
 
             <div className="grid-2" style={{ gap: '10px', alignItems: 'center' }}>
@@ -351,52 +399,84 @@ function BudgetScreen() {
 
       {/* Main horizontal scrolling BUDGET MATRIX */}
       <div className="glass-panel matrix-card">
-        <div className="card-header" style={{ borderBottom: 'none', marginBottom: '10px' }}>
-          <h3 className="card-title">
+        <div className="card-header" style={{ borderBottom: 'none', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <CalendarDays size={18} color="#6366f1" />
-            Rolling 24-Month Budgeting Matrix
-          </h3>
-          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-            ← Scroll horizontally to navigate 12 months backward & 12 months forward →
-          </span>
+            <h3 className="card-title">Rolling 24-Month Budgeting Matrix</h3>
+          </div>
+          
+          {data && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+                onClick={() => setStartIdx(prev => Math.max(0, prev - 1))}
+                disabled={startIdx === 0}
+              >
+                ← Prev
+              </button>
+              
+              <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                {data.timeline[startIdx].label} to {data.timeline[startIdx + WINDOW_SIZE - 1].label}
+              </span>
+              
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+                onClick={() => setStartIdx(prev => Math.min(data.timeline.length - WINDOW_SIZE, prev + 1))}
+                disabled={startIdx >= data.timeline.length - WINDOW_SIZE}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="matrix-scroll-wrapper">
           <table className="matrix-table">
             <thead>
               <tr>
-                <th className="matrix-th" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, width: '180px' }}>Category</th>
-                {data?.timeline.map((item, idx) => (
-                  <th 
-                    key={item.label} 
-                    className="matrix-th" 
-                    style={{ 
-                      textAlign: 'center', 
-                      backgroundColor: idx === 12 ? 'rgba(99,102,241,0.15)' : 'transparent',
-                      color: idx === 12 ? '#fff' : '#9ca3af',
-                      fontWeight: idx === 12 ? 'bold' : 'normal'
-                    }}
-                  >
-                    {item.label} {idx === 12 && '(Current)'}
-                  </th>
-                ))}
+                <th className="matrix-th" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, width: '180px' }}>Category</th>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
+                  return (
+                    <th 
+                      key={item.label} 
+                      className="matrix-th" 
+                      style={{ 
+                        textAlign: 'center', 
+                        backgroundColor: idx === 12 ? 'rgba(99,102,241,0.15)' : 'transparent',
+                        color: idx === 12 ? '#fff' : '#9ca3af',
+                        fontWeight: idx === 12 ? 'bold' : 'normal'
+                      }}
+                    >
+                      {item.label} {idx === 12 && '(Current)'}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
               {/* Baseline Income row */}
               <tr>
-                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, fontWeight: 600 }}>Baseline Income</td>
-                {data?.timeline.map((item, idx) => (
-                  <td key={`income-${idx}`} className="matrix-td" style={{ textAlign: 'center', color: '#10b981', backgroundColor: idx === 12 ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
-                    +£{item.baselineIncome.toFixed(0)}
-                  </td>
-                ))}
+                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 600 }}>Baseline Income</td>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
+                  return (
+                    <td key={`income-${idx}`} className="matrix-td" style={{ textAlign: 'center', color: '#10b981', backgroundColor: idx === 12 ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
+                      +£{item.baselineIncome.toFixed(0)}
+                    </td>
+                  );
+                })}
               </tr>
 
               {/* Bills Outgoings row */}
               <tr>
-                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, fontWeight: 600 }}>Bills Total</td>
-                {data?.timeline.map((item, idx) => {
+                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 600 }}>Bills Total</td>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
                   const val = item.bills.filter(b => !b.category || b.category === 'bill').reduce((sum, b) => sum + b.amount, 0);
                   return (
                     <td key={`bills-${idx}`} className="matrix-td" style={{ textAlign: 'center', color: '#ef4444', backgroundColor: idx === 12 ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
@@ -408,8 +488,9 @@ function BudgetScreen() {
 
               {/* Savings row */}
               <tr>
-                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, fontWeight: 600 }}>Savings Total</td>
-                {data?.timeline.map((item, idx) => {
+                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 600 }}>Savings Total</td>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
                   const val = item.bills.filter(b => b.category === 'saving').reduce((sum, b) => sum + b.amount, 0);
                   return (
                     <td key={`savings-${idx}`} className="matrix-td" style={{ textAlign: 'center', color: '#6366f1', backgroundColor: idx === 12 ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
@@ -421,8 +502,9 @@ function BudgetScreen() {
 
               {/* Other Outgoings row */}
               <tr>
-                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, fontWeight: 600 }}>Other Outgoings</td>
-                {data?.timeline.map((item, idx) => {
+                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 600 }}>Other Outgoings</td>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
                   const val = item.bills.filter(b => b.category === 'other').reduce((sum, b) => sum + b.amount, 0);
                   return (
                     <td key={`other-${idx}`} className="matrix-td" style={{ textAlign: 'center', color: '#f59e0b', backgroundColor: idx === 12 ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
@@ -434,8 +516,9 @@ function BudgetScreen() {
 
               {/* Monthly Rollover row */}
               <tr className="matrix-row-highlight">
-                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, fontWeight: 'bold' }}>Monthly Rollover</td>
-                {data?.timeline.map((item, idx) => {
+                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 'bold' }}>Monthly Rollover</td>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
                   const bills = item.bills.filter(b => !b.category || b.category === 'bill').reduce((sum, b) => sum + b.amount, 0);
                   const savings = item.bills.filter(b => b.category === 'saving').reduce((sum, b) => sum + b.amount, 0);
                   const other = item.bills.filter(b => b.category === 'other').reduce((sum, b) => sum + b.amount, 0);
@@ -458,7 +541,7 @@ function BudgetScreen() {
 
               {/* Detailed Bills Expansion Rows */}
               <tr>
-                <td colSpan={(data?.timeline.length || 0) + 1} style={{ padding: '16px 12px 6px 12px', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
+                <td colSpan={WINDOW_SIZE + 1} style={{ padding: '16px 12px 6px 12px', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
                   Granular Outgoings Propagation
                 </td>
               </tr>
@@ -470,7 +553,7 @@ function BudgetScreen() {
                 
                 return (
                   <tr key={bill.id}>
-                    <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: '#0c1224', zIndex: 10, borderBottom: 'none' }}>
+                    <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, borderBottom: 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         {isSaving ? (
                           <div className="supplier-logo" style={{ background: 'rgba(99, 102, 241, 0.15)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -514,7 +597,8 @@ function BudgetScreen() {
                       </div>
                     </td>
                     
-                    {data?.timeline.map((item, idx) => {
+                    {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                      const idx = startIdx + localIdx;
                       const isActive = item.bills.some(b => b.id === bill.id);
                       return (
                         <td 

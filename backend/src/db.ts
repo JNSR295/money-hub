@@ -140,9 +140,13 @@ export async function initializeDatabase() {
         provider VARCHAR(100) NOT NULL,
         balance NUMERIC(12, 2) DEFAULT 0.00,
         type VARCHAR(50) CHECK (type IN ('current', 'savings', 'investments', 'pension')) NOT NULL,
+        interest_rate NUMERIC(5, 2) DEFAULT 0.00,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Migration to support interest_rate in manual_accounts
+    await client.query(`ALTER TABLE manual_accounts ADD COLUMN IF NOT EXISTS interest_rate NUMERIC(5, 2) DEFAULT 0.00;`);
 
     await client.query('COMMIT');
     console.log('✅ Database schema initialized successfully!');

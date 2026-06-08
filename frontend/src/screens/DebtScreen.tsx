@@ -249,6 +249,8 @@ function DebtScreen() {
                               <Tooltip 
                                 formatter={(value) => `£${(value as number).toFixed(2)}`}
                                 contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                                itemStyle={{ color: '#ffffff' }}
+                                labelStyle={{ color: '#9ca3af' }}
                               />
                               <Line type="monotone" dataKey="balance" stroke="#ef4444" strokeWidth={2} dot={false} />
                             </LineChart>
@@ -314,6 +316,8 @@ function DebtScreen() {
                     <Tooltip 
                       formatter={(value) => `£${(value as number).toLocaleString()}`}
                       contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                      itemStyle={{ color: '#ffffff' }}
+                      labelStyle={{ color: '#9ca3af' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>

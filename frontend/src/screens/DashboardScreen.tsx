@@ -253,6 +253,8 @@ function DashboardScreen() {
                   <Tooltip 
                     formatter={(value) => `£${(value as number).toLocaleString()}`}
                     contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                    itemStyle={{ color: '#ffffff' }}
+                    labelStyle={{ color: '#9ca3af' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -307,6 +309,8 @@ function DashboardScreen() {
                   formatter={(value) => `£${(value as number).toLocaleString()}`}
                   labelFormatter={(label) => `Age: ${label}`}
                   contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  labelStyle={{ color: '#9ca3af' }}
                 />
                 <Area type="monotone" dataKey="value" stroke="#10b981" fillOpacity={1} fill="url(#colorPension)" strokeWidth={2} />
               </AreaChart>

@@ -490,7 +490,7 @@ app.get('/api/manual-accounts', requireAuth, async (req: Request, res: Response)
   const userId = req.session.userId!;
   try {
     const result = await query(
-      'SELECT id, name, provider, balance, type FROM manual_accounts WHERE user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, name, provider, balance, type, interest_rate FROM manual_accounts WHERE user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
     res.json(result.rows.map(row => ({
@@ -498,7 +498,8 @@ app.get('/api/manual-accounts', requireAuth, async (req: Request, res: Response)
       name: row.name,
       provider: row.provider,
       balance: parseFloat(row.balance),
-      type: row.type
+      type: row.type,
+      interestRate: parseFloat(row.interest_rate || '0.00')
     })));
   } catch (error) {
     console.error('Failed to get manual accounts:', error);
@@ -509,7 +510,7 @@ app.get('/api/manual-accounts', requireAuth, async (req: Request, res: Response)
 // Create or Update Manual Account
 app.post('/api/manual-accounts', requireAuth, async (req: Request, res: Response) => {
   const userId = req.session.userId!;
-  const { id, name, provider, balance, type } = req.body;
+  const { id, name, provider, balance, type, interest_rate } = req.body;
 
   if (!name || !provider || balance === undefined || !type) {
     return res.status(400).json({ error: 'Name, provider, balance, and type are required.' });
@@ -520,11 +521,12 @@ app.post('/api/manual-accounts', requireAuth, async (req: Request, res: Response
   }
 
   try {
+    const rate = interest_rate !== undefined ? parseFloat(interest_rate) : 0.00;
     if (id) {
       // Update existing manual account
       const result = await query(
-        'UPDATE manual_accounts SET name = $1, provider = $2, balance = $3, type = $4 WHERE id = $5 AND user_id = $6 RETURNING *',
-        [name, provider, parseFloat(balance), type, id, userId]
+        'UPDATE manual_accounts SET name = $1, provider = $2, balance = $3, type = $4, interest_rate = $5 WHERE id = $6 AND user_id = $7 RETURNING *',
+        [name, provider, parseFloat(balance), type, rate, id, userId]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Manual account not found.' });
@@ -533,8 +535,8 @@ app.post('/api/manual-accounts', requireAuth, async (req: Request, res: Response
     } else {
       // Create new manual account
       const result = await query(
-        'INSERT INTO manual_accounts (user_id, name, provider, balance, type) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [userId, name, provider, parseFloat(balance), type]
+        'INSERT INTO manual_accounts (user_id, name, provider, balance, type, interest_rate) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [userId, name, provider, parseFloat(balance), type, rate]
       );
       res.json({ success: true, message: 'Manual account created.', account: result.rows[0] });
     }
@@ -836,13 +838,20 @@ app.get('/api/accounts', requireAuth, async (req: Request, res: Response) => {
     const pensionPot = parseFloat(settingsRes.rows[0]?.pension_pot || '0.00');
 
     // Fetch manual accounts
-    const manualResult = await query('SELECT name, provider, balance, type FROM manual_accounts WHERE user_id = $1', [userId]);
-    const manualAccounts = manualResult.rows.map(row => ({
-      name: row.name,
-      provider: `${row.provider} (Manual)`,
-      balance: parseFloat(row.balance || '0.00'),
-      type: row.type
-    }));
+    const manualResult = await query('SELECT name, provider, balance, type, interest_rate FROM manual_accounts WHERE user_id = $1', [userId]);
+    const manualAccounts = manualResult.rows.map(row => {
+      const balance = parseFloat(row.balance || '0.00');
+      const interestRate = parseFloat(row.interest_rate || '0.00');
+      const forecastedInterest = (balance * (interestRate / 100)) / 12;
+      return {
+        name: row.name,
+        provider: `${row.provider} (Manual)`,
+        balance,
+        type: row.type,
+        interestRate,
+        forecastedInterest
+      };
+    });
 
     const liquidAccounts = [
       ...tlAccounts.filter(a => a.type === 'current').map(a => ({ name: a.name, provider: a.provider, balance: a.balance, accountNumber: a.accountNumber })),
@@ -850,17 +859,18 @@ app.get('/api/accounts', requireAuth, async (req: Request, res: Response) => {
     ];
 
     const growthAccounts = [
-      ...tlAccounts.filter(a => a.type === 'savings').map(a => ({ name: a.name, provider: a.provider, balance: a.balance, type: 'savings' })),
+      ...tlAccounts.filter(a => a.type === 'savings').map(a => ({ name: a.name, provider: a.provider, balance: a.balance, type: 'savings', interestRate: 0.00, forecastedInterest: 0.00 })),
       ...manualAccounts.filter(a => a.type !== 'current'),
-      { name: 'Trading 212 Portfolio', provider: 'Trading 212', balance: t212.value, type: 'investments' },
-      { name: 'Aviva Pension Pot', provider: 'Aviva (Manual)', balance: pensionPot, type: 'pension' }
+      { name: 'Trading 212 Portfolio', provider: 'Trading 212', balance: t212.value, type: 'investments', interestRate: 0.00, forecastedInterest: 0.00 },
+      { name: 'Aviva Pension Pot', provider: 'Aviva (Manual)', balance: pensionPot, type: 'pension', interestRate: 0.00, forecastedInterest: 0.00 }
     ];
 
     res.json({
       liquid: liquidAccounts,
       growth: growthAccounts,
       liquidTotal: liquidAccounts.reduce((sum, a) => sum + a.balance, 0),
-      growthTotal: growthAccounts.reduce((sum, a) => sum + a.balance, 0)
+      growthTotal: growthAccounts.reduce((sum, a) => sum + a.balance, 0),
+      forecastedInterestTotal: growthAccounts.reduce((sum, a) => sum + (a.forecastedInterest || 0), 0)
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch accounts data.' });

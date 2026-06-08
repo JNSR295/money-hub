@@ -63,6 +63,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
   const [newAccName, setNewAccName] = useState('');
   const [newAccProvider, setNewAccProvider] = useState('');
   const [newAccBalance, setNewAccBalance] = useState('');
+  const [newAccInterestRate, setNewAccInterestRate] = useState('');
   const [newAccType, setNewAccType] = useState('savings');
 
   useEffect(() => {
@@ -205,11 +206,13 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
         name: newAccName,
         provider: newAccProvider,
         balance: parseFloat(newAccBalance),
-        type: newAccType
+        type: newAccType,
+        interest_rate: parseFloat(newAccInterestRate) || 0.00
       });
       setNewAccName('');
       setNewAccProvider('');
       setNewAccBalance('');
+      setNewAccInterestRate('');
       setNewAccType('savings');
       setMessage({ text: 'Manual account added successfully.', isError: false });
       fetchManualAccounts();
@@ -515,6 +518,13 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                 <div className="theme-dot" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }} />
                 <span style={{ fontSize: '13px', fontWeight: 'bold' }}>Forest Green</span>
               </div>
+              <div 
+                className={`theme-card ${activeTheme === 'light' ? 'active' : ''}`}
+                onClick={() => changeTheme('light')}
+              >
+                <div className="theme-dot" style={{ background: 'linear-gradient(135deg, #f3f4f6, #ffffff)', border: '1px solid #d1d5db' }} />
+                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>Light Mode</span>
+              </div>
             </div>
           </div>
         </div>
@@ -681,6 +691,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                       <th style={{ padding: '10px 8px' }}>Account Name</th>
                       <th style={{ padding: '10px 8px' }}>Provider</th>
                       <th style={{ padding: '10px 8px' }}>Type</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'right' }}>Interest Rate</th>
                       <th style={{ padding: '10px 8px', textAlign: 'right' }}>Balance</th>
                       <th style={{ padding: '10px 8px', textAlign: 'center' }}>Action</th>
                     </tr>
@@ -692,6 +703,9 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                         <td style={{ padding: '10px 8px', color: '#9ca3af' }}>{acc.provider}</td>
                         <td style={{ padding: '10px 8px', color: '#9ca3af', textTransform: 'capitalize' }}>
                           {acc.type === 'current' ? 'Current' : acc.type === 'savings' ? 'Savings' : acc.type === 'investments' ? 'Investments' : 'Pension'}
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', color: '#10b981' }}>
+                          {acc.interestRate && acc.interestRate > 0 ? `${acc.interestRate}% APR` : '—'}
                         </td>
                         <td style={{ padding: '10px 8px', textAlign: 'right', color: '#10b981', fontWeight: 'bold' }}>
                           £{acc.balance.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
@@ -750,6 +764,17 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                   value={newAccBalance} 
                   onChange={(e) => setNewAccBalance(e.target.value)} 
                   required 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Annual Interest Rate (% APR, Optional)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="form-input" 
+                  placeholder="e.g. 5.20"
+                  value={newAccInterestRate} 
+                  onChange={(e) => setNewAccInterestRate(e.target.value)} 
                 />
               </div>
               <div className="form-group">

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Wallet, ShieldCheck, Mail, Lock, KeyRound } from 'lucide-react';
+import { Wallet, ShieldCheck, Mail, Lock, KeyRound, PiggyBank, Coins } from 'lucide-react';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: { email: string; twoFactorEnabled: boolean }) => void;
@@ -12,10 +12,19 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [twoFactorToken, setTwoFactorToken] = useState('');
   const [show2FA, setShow2FA] = useState(false);
+  const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (show2FA) {
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+    }
+  }, [show2FA]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,21 +70,86 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }
   };
 
-  const handle2FAVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handle2FAVerify = async (e?: React.FormEvent | string) => {
+    if (e && typeof e !== 'string') {
+      e.preventDefault();
+    }
     setMessage(null);
     setIsLoading(true);
 
+    const code = typeof e === 'string' ? e : otp.join('');
+    if (code.length !== 6) {
+      setMessage({ text: 'Please enter a 6-digit code.', isError: true });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post('/api/login/2fa', { token: twoFactorToken });
+      const response = await axios.post('/api/login/2fa', { token: code });
       onLoginSuccess(response.data.user);
     } catch (error: any) {
       setMessage({
         text: error.response?.data?.error || 'Invalid 2FA code.',
         isError: true
       });
+      setOtp(new Array(6).fill(''));
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleChange = (element: HTMLInputElement, index: number) => {
+    const val = element.value.replace(/[^0-9]/g, '');
+    const newOtp = [...otp];
+    newOtp[index] = val ? val[val.length - 1] : '';
+    setOtp(newOtp);
+
+    // Focus next input
+    if (newOtp[index] && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit if all inputs are filled
+    const fullCode = newOtp.join('');
+    if (fullCode.length === 6) {
+      handle2FAVerify(fullCode);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace') {
+      const newOtp = [...otp];
+      if (!newOtp[index]) {
+        if (index > 0) {
+          newOtp[index - 1] = '';
+          setOtp(newOtp);
+          inputRefs.current[index - 1]?.focus();
+        }
+      } else {
+        newOtp[index] = '';
+        setOtp(newOtp);
+      }
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+    if (pastedData.length === 6) {
+      const newOtp = pastedData.split('');
+      setOtp(newOtp);
+      handle2FAVerify(pastedData);
+    } else {
+      const newOtp = [...otp];
+      for (let i = 0; i < pastedData.length; i++) {
+        newOtp[i] = pastedData[i] || '';
+      }
+      setOtp(newOtp);
+      const nextFocusIdx = Math.min(pastedData.length, 5);
+      inputRefs.current[nextFocusIdx]?.focus();
     }
   };
 
@@ -86,15 +160,15 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '20px',
-      background: '#060913',
-      backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 60%)'
+      background: 'var(--bg-main, #060913)',
+      backgroundImage: 'radial-gradient(circle at 50% 50%, var(--primary-glow) 0%, transparent 60%)'
     }}>
       <div className="glass-panel" style={{
         width: '100%',
         maxWidth: '420px',
         padding: '40px',
         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-        border: '1px solid rgba(99, 102, 241, 0.25)',
+        border: '1px solid var(--border-color)',
         position: 'relative'
       }}>
         {/* Glow effect */}
@@ -104,7 +178,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           left: '20%',
           right: '20%',
           height: '2px',
-          background: 'linear-gradient(90deg, transparent, #6366f1, #0ea5e9, transparent)',
+          background: 'linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent)',
           filter: 'blur(1px)'
         }} />
 
@@ -112,18 +186,18 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div style={{
             width: '48px',
             height: '48px',
-            background: 'linear-gradient(135deg, #6366f1, #0ea5e9)',
+            background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
             borderRadius: '12px',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: '16px',
-            boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)'
+            boxShadow: 'var(--shadow-glow)'
           }}>
             <Wallet size={24} color="white" />
           </div>
           <h1 style={{ fontSize: '26px', fontWeight: 800, fontFamily: 'Outfit' }}>Money Hub</h1>
-          <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
             {show2FA ? 'Verification Required' : 'Personal Wealth Orchestrator'}
           </p>
         </div>
@@ -147,21 +221,36 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         {show2FA ? (
           <form onSubmit={handle2FAVerify}>
             <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center', marginBottom: '12px' }}>
                 <KeyRound size={14} />
                 Enter 2FA Code
               </label>
-              <input
-                type="text"
-                placeholder="6-digit verification code"
-                className="form-input"
-                value={twoFactorToken}
-                onChange={(e) => setTwoFactorToken(e.target.value)}
-                maxLength={6}
-                required
-                style={{ textAlign: 'center', letterSpacing: '0.5em', fontSize: '18px', fontWeight: 'bold' }}
-                disabled={isLoading}
-              />
+              
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '16px 0' }}>
+                {otp.map((data, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    maxLength={1}
+                    value={data}
+                    ref={(el) => { inputRefs.current[index] = el; }}
+                    onChange={(e) => handleChange(e.target, index)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    onPaste={handlePaste}
+                    disabled={isLoading}
+                    className="form-input otp-input"
+                    style={{
+                      width: '45px',
+                      height: '50px',
+                      fontSize: '24px',
+                      textAlign: 'center',
+                      fontWeight: 'bold',
+                      outline: 'none',
+                    }}
+                    onFocus={(e) => e.target.select()}
+                  />
+                ))}
+              </div>
             </div>
 
             <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isLoading}>
@@ -174,7 +263,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               style={{ width: '100%', marginTop: '12px', border: 'none', background: 'transparent' }}
               onClick={() => {
                 setShow2FA(false);
-                setTwoFactorToken('');
+                setOtp(new Array(6).fill(''));
                 setMessage(null);
               }}
               disabled={isLoading}
@@ -258,7 +347,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#6366f1',
+                  color: 'var(--primary)',
                   fontSize: '13px',
                   cursor: 'pointer',
                   fontWeight: 500

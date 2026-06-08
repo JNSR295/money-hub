@@ -22,6 +22,8 @@ interface AccountItem {
   balance: number;
   type?: string;
   accountNumber?: string;
+  interestRate?: number;
+  forecastedInterest?: number;
 }
 
 interface AccountsData {
@@ -29,6 +31,7 @@ interface AccountsData {
   growth: AccountItem[];
   liquidTotal: number;
   growthTotal: number;
+  forecastedInterestTotal: number;
 }
 
 const LIQUID_COLORS = ['#6366F1', '#0EA5E9', '#EC4899'];
@@ -66,7 +69,7 @@ function AccountsScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
       
       {/* Dynamic Summary Cards */}
-      <div className="grid-2">
+      <div className="grid-3">
         {/* Liquid total card */}
         <div className="glass-panel" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(14,165,233,0.02))', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -99,7 +102,25 @@ function AccountsScreen() {
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '14px' }}>
-            Investments, High-Yield Savings, and Pension accounts compounding over time
+            Investments, High-Yield Savings, and Pension accounts compounding
+          </div>
+        </div>
+
+        {/* Forecasted Interest Card */}
+        <div className="glass-panel" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(16,185,129,0.06), rgba(14,165,233,0.02))', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '13px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Forecasted Monthly Yield</span>
+              <div className="metric-value" style={{ fontSize: '32px', color: '#10B981', background: 'none', WebkitTextFillColor: 'initial', marginTop: '6px' }}>
+                £{(data?.forecastedInterestTotal || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)' }}>
+              <TrendingUp size={20} color="#10b981" />
+            </div>
+          </div>
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '14px' }}>
+            Estimated interest to be earned next month from savings accounts
           </div>
         </div>
       </div>
@@ -136,6 +157,8 @@ function AccountsScreen() {
                     <Tooltip 
                       formatter={(value) => `£${(value as number).toLocaleString()}`}
                       contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                      itemStyle={{ color: '#ffffff' }}
+                      labelStyle={{ color: '#9ca3af' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -187,6 +210,8 @@ function AccountsScreen() {
                     <Tooltip 
                       formatter={(value) => `£${(value as number).toLocaleString()}`}
                       contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                      itemStyle={{ color: '#ffffff' }}
+                      labelStyle={{ color: '#9ca3af' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -243,10 +268,25 @@ function AccountsScreen() {
               <div key={acc.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{acc.name}</div>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>{acc.provider}</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
+                    <span>{acc.provider}</span>
+                    {acc.interestRate && acc.interestRate > 0 ? (
+                      <>
+                        <span style={{ color: 'var(--text-muted)' }}>•</span>
+                        <span style={{ color: '#10b981', fontWeight: '500' }}>{acc.interestRate}% APR</span>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
-                <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#10b981' }}>
-                  £{acc.balance.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#10b981' }}>
+                    £{acc.balance.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                  </div>
+                  {acc.forecastedInterest && acc.forecastedInterest > 0 ? (
+                    <div style={{ fontSize: '11px', color: '#10b981', opacity: 0.85, marginTop: '2px' }}>
+                      Forecast: +£{acc.forecastedInterest.toFixed(2)}/mo
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
