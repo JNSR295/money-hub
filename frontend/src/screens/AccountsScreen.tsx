@@ -37,10 +37,11 @@ interface AccountsData {
 const LIQUID_COLORS = ['#6366F1', '#0EA5E9', '#EC4899'];
 const GROWTH_COLORS = ['#10B981', '#F59E0B', '#8B5CF6'];
 
-function AccountsScreen() {
+function AccountsScreen({ onSynced }: { onSynced?: () => void }) {
   const [data, setData] = useState<AccountsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<string>('');
 
   useEffect(() => {
     fetchAccountsData();
@@ -51,6 +52,8 @@ function AccountsScreen() {
     try {
       const response = await axios.get('/api/accounts');
       setData(response.data);
+      setLastSynced(new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+      onSynced?.();
     } catch (err) {
       setError('Stale or unavailable connection to bank feeds.');
     } finally {
@@ -85,6 +88,9 @@ function AccountsScreen() {
           </div>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '14px' }}>
             Available cash in current account
+          </div>
+          <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '6px' }}>
+            Last Synced: {lastSynced || 'N/A'}
           </div>
         </div>
 

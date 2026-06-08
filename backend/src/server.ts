@@ -720,8 +720,8 @@ app.get('/api/debts', requireAuth, async (req: Request, res: Response) => {
         card.provider.toLowerCase().includes(m.provider_name.toLowerCase()) || 
         card.name.toLowerCase().includes(m.provider_name.toLowerCase())
       ) || {
-        interest_rate_apr: 24.9,
-        monthly_payoff_amount: 50.00
+        interest_rate_apr: 0,
+        monthly_payoff_amount: 0
       };
 
       const balance = card.balance;

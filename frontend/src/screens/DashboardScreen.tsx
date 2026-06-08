@@ -43,7 +43,7 @@ interface DashboardData {
 
 const COLORS = ['#6366F1', '#0EA5E9', '#10B981', '#F59E0B'];
 
-function DashboardScreen() {
+function DashboardScreen({ onSynced }: { onSynced?: () => void }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +67,7 @@ function DashboardScreen() {
       // 1. Fetch main dashboard data
       const response = await axios.get('/api/dashboard');
       setData(response.data);
+      onSynced?.();
       
       // 2. Fetch current user settings to populate inputs
       const settingsResponse = await axios.get('/api/config/settings');

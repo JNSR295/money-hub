@@ -8,7 +8,8 @@ import {
   Settings, 
   LogOut,
   Wallet,
-  ShieldCheck
+  ShieldCheck,
+  Clock
 } from 'lucide-react';
 
 // Import Screens
@@ -32,6 +33,7 @@ interface User {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastSynced, setLastSynced] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('code')) {
@@ -167,6 +169,12 @@ function App() {
         </div>
 
         <div className="user-badge-sidebar">
+          {lastSynced && (
+            <span style={{ fontSize: '10px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+              <Clock size={10} />
+              Last Synced: {lastSynced}
+            </span>
+          )}
           <span className="user-email-text">
             <ShieldCheck size={14} color="#10b981" />
             {user.email}
@@ -180,9 +188,9 @@ function App() {
 
       {/* Screen Render */}
       <main className="main-content">
-        {activeTab === 'dashboard' && <DashboardScreen />}
-        {activeTab === 'debts' && <DebtScreen />}
-        {activeTab === 'accounts' && <AccountsScreen />}
+        {activeTab === 'dashboard' && <DashboardScreen onSynced={() => setLastSynced(new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))} />}
+        {activeTab === 'debts' && <DebtScreen onSynced={() => setLastSynced(new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))} />}
+        {activeTab === 'accounts' && <AccountsScreen onSynced={() => setLastSynced(new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))} />}
         {activeTab === 'budget' && <BudgetScreen />}
         {activeTab === 'config' && <ConfigScreen user={user} onUserUpdate={checkSession} />}
       </main>

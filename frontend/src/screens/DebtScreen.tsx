@@ -44,7 +44,7 @@ interface DebtRepaymentItem {
 
 const COLORS = ['#ef4444', '#f59e0b', '#ec4899', '#8b5cf6'];
 
-function DebtScreen() {
+function DebtScreen({ onSynced }: { onSynced?: () => void }) {
   const [debts, setDebts] = useState<DebtRepaymentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +72,7 @@ function DebtScreen() {
         hour: '2-digit',
         minute: '2-digit'
       }));
+      onSynced?.();
     } catch (err) {
       setError('Stale or unavailable connection to bank feeds.');
     } finally {
@@ -103,7 +104,7 @@ function DebtScreen() {
 
   const pieData = debts
     .filter(d => d.balance > 0)
-    .map(d => ({ name: d.provider, value: d.balance }));
+    .map(d => ({ name: `${d.provider} - ${d.name}`, value: d.balance }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -144,7 +145,7 @@ function DebtScreen() {
               >
                 <option value="">Select Account...</option>
                 {debts.map(d => (
-                  <option key={d.id} value={d.provider}>{d.provider} ({d.name})</option>
+                  <option key={d.id} value={d.name}>{d.provider} — {d.name}</option>
                 ))}
               </select>
             </div>
