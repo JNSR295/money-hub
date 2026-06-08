@@ -185,15 +185,27 @@ export async function getTrueLayerCards(userId: number): Promise<any[]> {
   
   const urls = getBaseUrls(creds.clientId);
   let token = creds.accessToken;
+
+  // Load user full name to detect display name overlaps
+  let userFullName = '';
+  try {
+    const userResult = await query('SELECT first_name, last_name FROM users WHERE id = $1', [userId]);
+    const user = userResult.rows[0];
+    if (user) {
+      userFullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    }
+  } catch (dbErr) {
+    console.error('Failed to load user name for cards formatting:', dbErr);
+  }
   
   try {
-    return await fetchCards(urls.api, token);
+    return await fetchCards(urls.api, token, userFullName);
   } catch (error: any) {
     if (error.response?.status === 401 && creds.refreshToken) {
       console.log('🔄 Access token expired. Refreshing card token...');
       try {
         token = await refreshAccessToken(userId, creds);
-        return await fetchCards(urls.api, token);
+        return await fetchCards(urls.api, token, userFullName);
       } catch (refreshErr) {
         return getMockCards();
       }
@@ -202,7 +214,26 @@ export async function getTrueLayerCards(userId: number): Promise<any[]> {
   }
 }
 
-async function fetchCards(baseApiUrl: string, token: string): Promise<any[]> {
+function resolveCardName(card: any, userFullName: string): string {
+  const cardName = card.display_name || 'Credit Card';
+  const nameOnCard = card.name_on_card ? card.name_on_card.toLowerCase().trim() : '';
+  const dispLower = card.display_name ? card.display_name.toLowerCase().trim() : '';
+  const userFullNameLower = userFullName ? userFullName.toLowerCase().trim() : '';
+
+  if (
+    dispLower && 
+    (dispLower === nameOnCard || 
+     dispLower === userFullNameLower || 
+     (userFullNameLower && dispLower.includes(userFullNameLower)))
+  ) {
+    const network = card.card_network ? card.card_network.toUpperCase() : 'CARD';
+    const type = card.card_type ? card.card_type.replace('_', ' ').toUpperCase() : 'CREDIT';
+    return `${network} ${type} (••••${card.partial_card_number || ''})`;
+  }
+  return cardName;
+}
+
+async function fetchCards(baseApiUrl: string, token: string, userFullName: string = ''): Promise<any[]> {
   const response = await axios.get(`${baseApiUrl}/data/v1/cards`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -211,6 +242,7 @@ async function fetchCards(baseApiUrl: string, token: string): Promise<any[]> {
   
   const cardsWithBalances = await Promise.all(
     cards.map(async (card: any) => {
+      const cardName = resolveCardName(card, userFullName);
       try {
         const balResponse = await axios.get(`${baseApiUrl}/data/v1/cards/${card.account_id}/balance`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -218,7 +250,7 @@ async function fetchCards(baseApiUrl: string, token: string): Promise<any[]> {
         const balance = balResponse.data.results[0] || {};
         return {
           id: card.account_id,
-          name: card.display_name || 'Credit Card',
+          name: cardName,
           provider: card.provider?.display_name || 'Card Issuer',
           type: 'credit_card',
           balance: balance.current || 0.00, // outstanding balance
@@ -229,7 +261,7 @@ async function fetchCards(baseApiUrl: string, token: string): Promise<any[]> {
       } catch (err) {
         return {
           id: card.account_id,
-          name: card.display_name || 'Credit Card',
+          name: cardName,
           provider: card.provider?.display_name || 'Card Issuer',
           type: 'credit_card',
           balance: 0.00,

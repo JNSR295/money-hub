@@ -23,6 +23,7 @@ interface AccountItem {
   type?: string;
   accountNumber?: string;
   interestRate?: number;
+  monthlyContribution?: number;
   forecastedInterest?: number;
 }
 
@@ -118,7 +119,7 @@ function AccountsScreen({ onSynced }: { onSynced?: () => void }) {
             <div>
               <span style={{ fontSize: '13px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Forecasted Monthly Yield</span>
               <div className="metric-value" style={{ fontSize: '32px', color: '#10B981', background: 'none', WebkitTextFillColor: 'initial', marginTop: '6px' }}>
-                £{(data?.forecastedInterestTotal || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                £{((data?.forecastedInterestTotal || 0) + (data?.growth.reduce((sum, a) => sum + (a.monthlyContribution || 0), 0) || 0)).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)' }}>
@@ -126,7 +127,7 @@ function AccountsScreen({ onSynced }: { onSynced?: () => void }) {
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '14px' }}>
-            Estimated interest to be earned next month from savings accounts
+            Interest: £{(data?.forecastedInterestTotal || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })} | Contributions: £{(data?.growth.reduce((sum, a) => sum + (a.monthlyContribution || 0), 0) || 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
           </div>
         </div>
       </div>
@@ -288,9 +289,14 @@ function AccountsScreen({ onSynced }: { onSynced?: () => void }) {
                   <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#10b981' }}>
                     £{acc.balance.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                   </div>
-                  {acc.forecastedInterest && acc.forecastedInterest > 0 ? (
-                    <div style={{ fontSize: '11px', color: '#10b981', opacity: 0.85, marginTop: '2px' }}>
-                      Forecast: +£{acc.forecastedInterest.toFixed(2)}/mo
+                  {((acc.forecastedInterest && acc.forecastedInterest > 0) || (acc.monthlyContribution && acc.monthlyContribution > 0)) ? (
+                    <div style={{ fontSize: '11px', color: '#10b981', opacity: 0.85, marginTop: '2px', textAlign: 'right' }}>
+                      {acc.monthlyContribution && acc.monthlyContribution > 0 && (
+                        <div>Contrib: +£{acc.monthlyContribution.toFixed(2)}/mo</div>
+                      )}
+                      {acc.forecastedInterest && acc.forecastedInterest > 0 && (
+                        <div>Interest: +£{acc.forecastedInterest.toFixed(2)}/mo</div>
+                      )}
                     </div>
                   ) : null}
                 </div>

@@ -715,10 +715,14 @@ app.get('/api/debts', requireAuth, async (req: Request, res: Response) => {
     const debtsMetaRes = await query('SELECT * FROM debts_metadata WHERE user_id = $1', [userId]);
     const debtsMeta = debtsMetaRes.rows;
 
+    const billsRes = await query("SELECT amount, target_account_id FROM bills WHERE user_id = $1 AND category = 'debt'", [userId]);
+    const debtBills = billsRes.rows;
+
     const debtItems = liveCards.map(card => {
       const meta = debtsMeta.find(m => 
-        card.provider.toLowerCase().includes(m.provider_name.toLowerCase()) || 
-        card.name.toLowerCase().includes(m.provider_name.toLowerCase())
+        m.provider_name.toLowerCase() === `${card.provider} - ${card.name}`.toLowerCase() ||
+        m.provider_name.toLowerCase() === card.name.toLowerCase() ||
+        card.provider.toLowerCase().includes(m.provider_name.toLowerCase())
       ) || {
         interest_rate_apr: 0,
         monthly_payoff_amount: 0
@@ -726,7 +730,11 @@ app.get('/api/debts', requireAuth, async (req: Request, res: Response) => {
 
       const balance = card.balance;
       const apr = parseFloat(meta.interest_rate_apr as string);
-      const monthlyPayment = parseFloat(meta.monthly_payoff_amount as string);
+      
+      const matchKey = `${card.provider} - ${card.name}`;
+      const relevantBills = debtBills.filter(b => b.target_account_id === matchKey);
+      const monthlyPayment = relevantBills.reduce((sum, b) => sum + parseFloat(b.amount || '0.00'), 0);
+
       const rMonthly = (apr / 100) / 12;
 
       let monthsRemaining = 0;
@@ -833,18 +841,28 @@ app.get('/api/accounts', requireAuth, async (req: Request, res: Response) => {
     const settingsRes = await query('SELECT pension_pot FROM user_settings WHERE user_id = $1', [userId]);
     const pensionPot = parseFloat(settingsRes.rows[0]?.pension_pot || '0.00');
 
+    // Fetch active savings outgoings to compute contribution adjusted yields
+    const billsRes = await query("SELECT amount, target_account_id FROM bills WHERE user_id = $1 AND category = 'saving'", [userId]);
+    const savingBills = billsRes.rows;
+
     // Fetch manual accounts
-    const manualResult = await query('SELECT name, provider, balance, type, interest_rate FROM manual_accounts WHERE user_id = $1', [userId]);
+    const manualResult = await query('SELECT id, name, provider, balance, type, interest_rate FROM manual_accounts WHERE user_id = $1', [userId]);
     const manualAccounts = manualResult.rows.map(row => {
       const balance = parseFloat(row.balance || '0.00');
       const interestRate = parseFloat(row.interest_rate || '0.00');
-      const forecastedInterest = (balance * (interestRate / 100)) / 12;
+      
+      const matchKey = `${row.provider} (Manual) - ${row.name}`;
+      const relevantBills = savingBills.filter(b => b.target_account_id === matchKey);
+      const monthlyContribution = relevantBills.reduce((sum, b) => sum + parseFloat(b.amount || '0.00'), 0);
+
+      const forecastedInterest = ((balance + monthlyContribution) * (interestRate / 100)) / 12;
       return {
         name: row.name,
         provider: `${row.provider} (Manual)`,
         balance,
         type: row.type,
         interestRate,
+        monthlyContribution,
         forecastedInterest
       };
     });
@@ -855,10 +873,53 @@ app.get('/api/accounts', requireAuth, async (req: Request, res: Response) => {
     ];
 
     const growthAccounts = [
-      ...tlAccounts.filter(a => a.type === 'savings').map(a => ({ name: a.name, provider: a.provider, balance: a.balance, type: 'savings', interestRate: 0.00, forecastedInterest: 0.00 })),
+      ...tlAccounts.filter(a => a.type === 'savings').map(a => {
+        const matchKey = `${a.provider} - ${a.name}`;
+        const relevantBills = savingBills.filter(b => b.target_account_id === matchKey);
+        const monthlyContribution = relevantBills.reduce((sum, b) => sum + parseFloat(b.amount || '0.00'), 0);
+        return {
+          name: a.name,
+          provider: a.provider,
+          balance: a.balance,
+          type: 'savings',
+          interestRate: 0.00,
+          monthlyContribution,
+          forecastedInterest: 0.00
+        };
+      }),
       ...manualAccounts.filter(a => a.type !== 'current'),
-      { name: 'Trading 212 Portfolio', provider: 'Trading 212', balance: t212.value, type: 'investments', interestRate: 0.00, forecastedInterest: 0.00 },
-      { name: 'Aviva Pension Pot', provider: 'Aviva (Manual)', balance: pensionPot, type: 'pension', interestRate: 0.00, forecastedInterest: 0.00 }
+      (() => {
+        const provider = 'Trading 212';
+        const name = 'Trading 212 Portfolio';
+        const matchKey = `${provider} - ${name}`;
+        const relevantBills = savingBills.filter(b => b.target_account_id === matchKey);
+        const monthlyContribution = relevantBills.reduce((sum, b) => sum + parseFloat(b.amount || '0.00'), 0);
+        return {
+          name,
+          provider,
+          balance: t212.value,
+          type: 'investments',
+          interestRate: 0.00,
+          monthlyContribution,
+          forecastedInterest: 0.00
+        };
+      })(),
+      (() => {
+        const provider = 'Aviva (Manual)';
+        const name = 'Aviva Pension Pot';
+        const matchKey = `${provider} - ${name}`;
+        const relevantBills = savingBills.filter(b => b.target_account_id === matchKey);
+        const monthlyContribution = relevantBills.reduce((sum, b) => sum + parseFloat(b.amount || '0.00'), 0);
+        return {
+          name,
+          provider,
+          balance: pensionPot,
+          type: 'pension',
+          interestRate: 0.00,
+          monthlyContribution,
+          forecastedInterest: 0.00
+        };
+      })()
     ];
 
     res.json({

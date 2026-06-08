@@ -50,11 +50,7 @@ function DebtScreen({ onSynced }: { onSynced?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [lastSynced, setLastSynced] = useState<string>('');
 
-  // Payoff Plan form state
-  const [providerName, setProviderName] = useState('');
-  const [aprRate, setAprRate] = useState('');
-  const [monthlyPayoff, setMonthlyPayoff] = useState('');
-  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [aprValues, setAprValues] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     fetchDebtsData();
@@ -80,23 +76,22 @@ function DebtScreen({ onSynced }: { onSynced?: () => void }) {
     }
   };
 
-  const handleConfigurePlan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingPlan(true);
+  const handleSaveApr = async (provider: string, name: string, value: string | undefined, id: string) => {
+    const targetVal = value !== undefined ? value : '';
+    if (targetVal === '') return;
+    
+    const apr = parseFloat(targetVal);
+    if (isNaN(apr) || apr < 0) return;
+    
     try {
       await axios.post('/api/debts/plan', {
-        provider_name: providerName,
-        interest_rate_apr: parseFloat(aprRate),
-        monthly_payoff_amount: parseFloat(monthlyPayoff)
+        provider_name: `${provider} - ${name}`,
+        interest_rate_apr: apr,
+        monthly_payoff_amount: 0
       });
-      setProviderName('');
-      setAprRate('');
-      setMonthlyPayoff('');
       fetchDebtsData();
     } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSavingPlan(false);
+      console.error('Failed to save APR:', err);
     }
   };
 
@@ -128,57 +123,16 @@ function DebtScreen({ onSynced }: { onSynced?: () => void }) {
           </div>
         </div>
 
-        {/* Configure amortization card */}
+        {/* Debt Payoff Strategy Instruction */}
         <div className="glass-panel" style={{ padding: '24px', gridColumn: 'span 2' }}>
-          <h3 style={{ fontSize: '16px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <h3 style={{ fontSize: '16px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Calculator size={16} color="#ef4444" />
-            Add Debt
+            Debt Payoff Strategy
           </h3>
-          <form onSubmit={handleConfigurePlan} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div className="form-group" style={{ flex: 1, minWidth: '160px', marginBottom: 0 }}>
-              <label className="form-label">Provider Name</label>
-              <select 
-                className="form-input" 
-                value={providerName} 
-                onChange={(e) => setProviderName(e.target.value)}
-                required
-              >
-                <option value="">Select Account...</option>
-                {debts.map(d => (
-                  <option key={d.id} value={d.name}>{d.provider} — {d.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group" style={{ width: '100px', marginBottom: 0 }}>
-              <label className="form-label">APR (%)</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                placeholder="22.9" 
-                className="form-input"
-                value={aprRate}
-                onChange={(e) => setAprRate(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group" style={{ width: '130px', marginBottom: 0 }}>
-              <label className="form-label">Monthly Repayment</label>
-              <input 
-                type="number" 
-                placeholder="£150" 
-                className="form-input"
-                value={monthlyPayoff}
-                onChange={(e) => setMonthlyPayoff(e.target.value)}
-                required
-              />
-            </div>
-
-            <button type="submit" className="btn-primary" style={{ height: '42px' }} disabled={isSavingPlan}>
-              Apply & Save
-            </button>
-          </form>
+          <div style={{ fontSize: '13px', color: '#9ca3af', lineHeight: '1.5', marginTop: '10px' }}>
+            To modify the monthly payoff allocations, go to the <strong>Budget Matrix</strong> tab and add an outgoing of category <strong>Debt Payoff</strong> allocated to the target card.
+            Interest Rates (APRs) can be edited inline below on each card box.
+          </div>
         </div>
       </div>
 
@@ -214,10 +168,33 @@ function DebtScreen({ onSynced }: { onSynced?: () => void }) {
 
                   <div className="grid-3" style={{ marginBottom: '20px' }}>
                     <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>Interest Rate (APR)</span>
-                      <div style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Percent size={14} color="#f59e0b" />
-                        {debt.apr}%
+                      <span style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Interest Rate (APR)</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input
+                          type="number"
+                          step="0.1"
+                          style={{
+                            width: '65px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '4px',
+                            color: 'inherit',
+                            padding: '4px 6px',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            outline: 'none'
+                          }}
+                          value={aprValues[debt.id] !== undefined ? aprValues[debt.id] : debt.apr}
+                          onChange={(e) => setAprValues(prev => ({ ...prev, [debt.id]: e.target.value }))}
+                          onBlur={() => handleSaveApr(debt.provider, debt.name, aprValues[debt.id], debt.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSaveApr(debt.provider, debt.name, aprValues[debt.id], debt.id);
+                              (e.target as HTMLElement).blur();
+                            }
+                          }}
+                        />
+                        <span style={{ fontSize: '14px', fontWeight: '600' }}>%</span>
                       </div>
                     </div>
                     

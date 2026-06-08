@@ -9,7 +9,8 @@ import {
   AlertCircle,
   HelpCircle,
   PiggyBank,
-  Wallet
+  Wallet,
+  CreditCard
 } from 'lucide-react';
 
 interface Bill {
@@ -70,10 +71,12 @@ function BudgetScreen() {
 
   // Connected accounts state (for savings routing target)
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [debts, setDebts] = useState<any[]>([]);
 
   useEffect(() => {
     fetchBudgetData();
     fetchAccounts();
+    fetchDebts();
   }, []);
 
   const fetchBudgetData = async () => {
@@ -101,11 +104,21 @@ function BudgetScreen() {
     }
   };
 
+  const fetchDebts = async () => {
+    try {
+      const response = await axios.get('/api/debts');
+      setDebts(response.data.debts || []);
+    } catch (err) {
+      console.error('Failed to load debts for outgoings router:', err);
+    }
+  };
+
   const handleAddBill = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAddingBill(true);
     try {
       const isSaving = outgoingCategory === 'saving';
+      const isDebt = outgoingCategory === 'debt';
       await axios.post('/api/budget/bills', {
         name: billName.trim(),
         amount: parseFloat(billAmount),
@@ -113,7 +126,7 @@ function BudgetScreen() {
         duration_months: billDurationType === 'fixed' ? parseInt(billDurationMonths) : null,
         start_date: billStartDate,
         category: outgoingCategory,
-        target_account_id: isSaving ? targetAccountId : null
+        target_account_id: (isSaving || isDebt) ? targetAccountId : null
       });
       setBillName('');
       setBillAmount('');
@@ -217,8 +230,9 @@ function BudgetScreen() {
   const currentMonth = data?.timeline[12];
   const currentMonthBills = currentMonth ? currentMonth.bills.filter(b => !b.category || b.category === 'bill').reduce((sum, b) => sum + b.amount, 0) : 0;
   const currentMonthSavings = currentMonth ? currentMonth.bills.filter(b => b.category === 'saving').reduce((sum, b) => sum + b.amount, 0) : 0;
+  const currentMonthDebt = currentMonth ? currentMonth.bills.filter(b => b.category === 'debt').reduce((sum, b) => sum + b.amount, 0) : 0;
   const currentMonthOther = currentMonth ? currentMonth.bills.filter(b => b.category === 'other').reduce((sum, b) => sum + b.amount, 0) : 0;
-  const currentTotalOutgoings = currentMonthBills + currentMonthSavings + currentMonthOther;
+  const currentTotalOutgoings = currentMonthBills + currentMonthSavings + currentMonthDebt + currentMonthOther;
   const currentRollover = currentMonth ? (currentMonth.baselineIncome - currentTotalOutgoings) : 0;
   const budgetAllocatedPct = currentMonth ? Math.min(100, (currentTotalOutgoings / currentMonth.baselineIncome) * 100) : 0;
 
@@ -251,6 +265,11 @@ function BudgetScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
               <span style={{ color: '#9ca3af', fontSize: '14px' }}>Savings Allocation</span>
               <span style={{ fontWeight: 'bold', color: '#6366f1' }}>-£{currentMonthSavings.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+              <span style={{ color: '#9ca3af', fontSize: '14px' }}>Debt Payoff</span>
+              <span style={{ fontWeight: 'bold', color: '#ec4899' }}>-£{currentMonthDebt.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
@@ -320,18 +339,19 @@ function BudgetScreen() {
                   value={outgoingCategory} 
                   onChange={(e) => {
                     setOutgoingCategory(e.target.value);
-                    if (e.target.value !== 'saving') {
+                    if (e.target.value !== 'saving' && e.target.value !== 'debt') {
                       setTargetAccountId('');
                     }
                   }}
                 >
                   <option value="bill">Bill</option>
                   <option value="saving">Saving</option>
+                  <option value="debt">Debt Payoff</option>
                   <option value="other">Other</option>
                 </select>
               </div>
 
-              {outgoingCategory === 'saving' ? (
+              {outgoingCategory === 'saving' && (
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Target Account</label>
                   <select 
@@ -348,7 +368,26 @@ function BudgetScreen() {
                     ))}
                   </select>
                 </div>
-              ) : null}
+              )}
+
+              {outgoingCategory === 'debt' && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Target Credit Card</label>
+                  <select 
+                    className="form-input" 
+                    value={targetAccountId} 
+                    onChange={(e) => setTargetAccountId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Card...</option>
+                    {debts.map((d, idx) => (
+                      <option key={idx} value={`${d.provider} - ${d.name}`}>
+                        {d.provider} - {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="grid-2" style={{ gap: '10px', alignItems: 'center' }}>
@@ -500,6 +539,20 @@ function BudgetScreen() {
                 })}
               </tr>
 
+              {/* Debt Payoff row */}
+              <tr>
+                <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 600 }}>Debt Payoff</td>
+                {data?.timeline.slice(startIdx, startIdx + WINDOW_SIZE).map((item, localIdx) => {
+                  const idx = startIdx + localIdx;
+                  const val = item.bills.filter(b => b.category === 'debt').reduce((sum, b) => sum + b.amount, 0);
+                  return (
+                    <td key={`debt-${idx}`} className="matrix-td" style={{ textAlign: 'center', color: '#ec4899', backgroundColor: idx === 12 ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
+                      -£{val.toFixed(2)}
+                    </td>
+                  );
+                })}
+              </tr>
+
               {/* Other Outgoings row */}
               <tr>
                 <td className="matrix-td" style={{ position: 'sticky', left: 0, backgroundColor: 'var(--bg-matrix-sticky, #0c1224)', zIndex: 10, fontWeight: 600 }}>Other Outgoings</td>
@@ -521,8 +574,9 @@ function BudgetScreen() {
                   const idx = startIdx + localIdx;
                   const bills = item.bills.filter(b => !b.category || b.category === 'bill').reduce((sum, b) => sum + b.amount, 0);
                   const savings = item.bills.filter(b => b.category === 'saving').reduce((sum, b) => sum + b.amount, 0);
+                  const debt = item.bills.filter(b => b.category === 'debt').reduce((sum, b) => sum + b.amount, 0);
                   const other = item.bills.filter(b => b.category === 'other').reduce((sum, b) => sum + b.amount, 0);
-                  const rolloverVal = item.baselineIncome - (bills + savings + other);
+                  const rolloverVal = item.baselineIncome - (bills + savings + debt + other);
                   return (
                     <td 
                       key={`rem-${idx}`} 
@@ -548,6 +602,7 @@ function BudgetScreen() {
 
               {data?.bills.map(bill => {
                 const isSaving = bill.category === 'saving';
+                const isDebt = bill.category === 'debt';
                 const isOther = bill.category === 'other';
                 const billInfo = parseBillInfo(bill.name);
                 
@@ -558,6 +613,10 @@ function BudgetScreen() {
                         {isSaving ? (
                           <div className="supplier-logo" style={{ background: 'rgba(99, 102, 241, 0.15)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                             <PiggyBank size={12} color="#6366f1" />
+                          </div>
+                        ) : isDebt ? (
+                          <div className="supplier-logo" style={{ background: 'rgba(236, 72, 153, 0.15)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <CreditCard size={12} color="#ec4899" />
                           </div>
                         ) : isOther ? (
                           <div className="supplier-logo" style={{ background: 'rgba(245, 158, 11, 0.15)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -575,7 +634,7 @@ function BudgetScreen() {
                         )}
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 500 }}>{billInfo.name}</span>
-                          {isSaving && bill.target_account_id && (
+                          {(isSaving || isDebt) && bill.target_account_id && (
                             <span style={{ fontSize: '10px', color: '#9ca3af' }}>
                               {(() => {
                                 const parts = bill.target_account_id.split(' - ');
@@ -583,8 +642,11 @@ function BudgetScreen() {
                               })()}
                             </span>
                           )}
-                          {!isSaving && !isOther && (
+                          {!isSaving && !isDebt && !isOther && (
                             <span style={{ fontSize: '10px', color: '#6b7280' }}>Bill</span>
+                          )}
+                          {isDebt && (
+                            <span style={{ fontSize: '10px', color: '#ec4899' }}>Debt Payoff</span>
                           )}
                           {isOther && (
                             <span style={{ fontSize: '10px', color: '#f59e0b' }}>Other</span>
