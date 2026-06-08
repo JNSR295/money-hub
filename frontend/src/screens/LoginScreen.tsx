@@ -10,6 +10,8 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [twoFactorToken, setTwoFactorToken] = useState('');
   const [show2FA, setShow2FA] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
@@ -22,11 +24,24 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     try {
       if (isRegistering) {
-        // Register API
-        await axios.post('/api/register', { email, password });
+        // Frontend Password Complexity Validation: at least 8 chars, 1 uppercase, 1 digit, 1 special char
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+          setMessage({
+            text: 'Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character.',
+            isError: true
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Register API with firstName and lastName
+        await axios.post('/api/register', { email, password, firstName, lastName });
         setMessage({ text: 'Registration successful! Please log in.', isError: false });
         setIsRegistering(false);
         setPassword('');
+        setFirstName('');
+        setLastName('');
       } else {
         // Login API
         const response = await axios.post('/api/login', { email, password });
@@ -168,8 +183,36 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </button>
           </form>
         ) : (
-          /* Standard Login/Register Step */
           <form onSubmit={handleAuth}>
+            {isRegistering && (
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label className="form-label">First Name</label>
+                  <input
+                    type="text"
+                    placeholder="Jed"
+                    className="form-input"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label className="form-label">Last Name</label>
+                  <input
+                    type="text"
+                    placeholder="User"
+                    className="form-input"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Mail size={14} />
@@ -202,12 +245,6 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               />
             </div>
 
-            {isRegistering && (
-              <p style={{ fontSize: '11px', color: '#6b7280', margin: '-16px 0 20px 0', lineHeight: '1.4' }}>
-                ⚠️ Registration is currently restricted to authorized clients only (<code>jed@jnsr.uk</code>).
-              </p>
-            )}
-
             <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isLoading}>
               {isLoading 
                 ? (isRegistering ? 'Registering...' : 'Authenticating...') 
@@ -230,6 +267,8 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   setIsRegistering(!isRegistering);
                   setMessage(null);
                   setPassword('');
+                  setFirstName('');
+                  setLastName('');
                 }}
                 disabled={isLoading}
               >

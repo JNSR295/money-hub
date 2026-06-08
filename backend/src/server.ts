@@ -22,6 +22,12 @@ app.use(cors({
 
 app.use(express.json());
 
+// Request logging middleware for debugging
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - IP: ${req.ip}`);
+  next();
+});
+
 // Setup Session with Postgres Store
 const PostgresStore = connectPgSimple(session);
 app.use(session({
@@ -67,29 +73,37 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
 
 // Register
 app.post('/api/register', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, firstName, lastName } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  if (!email || !password || !firstName || !lastName) {
+    return res.status(400).json({ error: 'All fields (email, password, first name, last name) are required.' });
   }
 
-  // STRICT email registration validation as per brief
+  // Password complexity validation: at least 8 chars, 1 uppercase, 1 number, 1 special character
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({ 
+      error: 'Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character.' 
+    });
+  }
+
+  // STRICT email registration validation (silently return a generic error)
   if (email.toLowerCase().trim() !== 'jed@jnsr.uk') {
-    return res.status(403).json({ error: 'Registration is restricted for this email address.' });
+    return res.status(400).json({ error: 'Registration failed. Please try again.' });
   }
 
   try {
     const userCheck = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
     if (userCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists.' });
+      return res.status(400).json({ error: 'User already registered.' });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
 
     const newUser = await query(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
-      [email.toLowerCase().trim(), hash]
+      'INSERT INTO users (email, password_hash, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, email',
+      [email.toLowerCase().trim(), hash, firstName.trim(), lastName.trim()]
     );
 
     const userId = newUser.rows[0].id;
