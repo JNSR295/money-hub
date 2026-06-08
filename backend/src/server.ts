@@ -501,11 +501,12 @@ app.get('/api/truelayer/connect', requireAuth, async (req: Request, res: Respons
     const isSandbox = clientId.toLowerCase().includes('sandbox') || clientId.startsWith('test');
     
     const authBase = isSandbox ? 'https://auth.truelayer-sandbox.com' : 'https://auth.truelayer.com';
+    const providers = isSandbox ? 'uk-cs-mock' : 'uk-ob-all';
     const authUrl = `${authBase}/?response_type=code` +
       `&client_id=${clientId}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&scope=info%20accounts%20balance%20cards%20transactions%20offline_access` +
-      `&providers=uk-ob-all` +
+      `&providers=${providers}` +
       `&state=${userId}`;
 
     res.json({ authUrl });
