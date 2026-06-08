@@ -110,9 +110,15 @@ export async function initializeDatabase() {
         duration_type VARCHAR(20) CHECK (duration_type IN ('forever', 'fixed')) NOT NULL,
         duration_months INTEGER,
         start_date DATE NOT NULL,
+        category VARCHAR(50) DEFAULT 'bill',
+        target_account_id VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Migration to support category and target_account_id in bills table
+    await client.query(`ALTER TABLE bills ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'bill';`);
+    await client.query(`ALTER TABLE bills ADD COLUMN IF NOT EXISTS target_account_id VARCHAR(100);`);
 
     // Create budget_allocations table
     await client.query(`

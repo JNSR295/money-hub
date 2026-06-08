@@ -277,8 +277,7 @@ app.post('/api/2fa/setup', requireAuth, async (req: Request, res: Response) => {
   try {
     const secret = authenticator.generateSecret();
     req.session.temp2faSecret = secret;
-
-    const otpauth = authenticator.keyuri(email, 'WealthHub', secret);
+    const otpauth = authenticator.keyuri(email, 'Money Hub', secret);
     const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
 
     res.json({
@@ -849,7 +848,9 @@ app.get('/api/budget', requireAuth, async (req: Request, res: Response) => {
           amount: parseFloat(b.amount),
           durationType: b.duration_type,
           durationMonths: b.duration_months,
-          startDate: b.start_date
+          startDate: b.start_date,
+          category: b.category,
+          targetAccountId: b.target_account_id
         }))
       });
     }
@@ -900,7 +901,7 @@ app.post('/api/budget/allocations', requireAuth, async (req: Request, res: Respo
 
 app.post('/api/budget/bills', requireAuth, async (req: Request, res: Response) => {
   const userId = req.session.userId!;
-  const { name, amount, duration_type, duration_months, start_date } = req.body;
+  const { name, amount, duration_type, duration_months, start_date, category, target_account_id } = req.body;
 
   if (!name || !amount || !duration_type || !start_date) {
     return res.status(400).json({ error: 'name, amount, duration_type, and start_date are required.' });
@@ -912,15 +913,15 @@ app.post('/api/budget/bills', requireAuth, async (req: Request, res: Response) =
     const formattedStartDate = new Date(start_date);
 
     await query(
-      `INSERT INTO bills (user_id, name, amount, duration_type, duration_months, start_date)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, name.trim(), parsedAmount, duration_type, parsedMonths, formattedStartDate]
+      `INSERT INTO bills (user_id, name, amount, duration_type, duration_months, start_date, category, target_account_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [userId, name.trim(), parsedAmount, duration_type, parsedMonths, formattedStartDate, category || 'bill', target_account_id || null]
     );
 
-    res.json({ success: true, message: 'Bill added successfully.' });
+    res.json({ success: true, message: 'Outgoing added successfully.' });
   } catch (error) {
-    console.error('Add bill error:', error);
-    res.status(500).json({ error: 'Failed to add bill.' });
+    console.error('Add outgoing error:', error);
+    res.status(500).json({ error: 'Failed to add outgoing.' });
   }
 });
 

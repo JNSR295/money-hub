@@ -127,6 +127,7 @@ function AccountsScreen() {
                       outerRadius={65}
                       paddingAngle={3}
                       dataKey="value"
+                      stroke="none"
                     >
                       {liquidPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={LIQUID_COLORS[index % LIQUID_COLORS.length]} />
@@ -177,6 +178,7 @@ function AccountsScreen() {
                       outerRadius={65}
                       paddingAngle={3}
                       dataKey="value"
+                      stroke="none"
                     >
                       {growthPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={GROWTH_COLORS[index % GROWTH_COLORS.length]} />

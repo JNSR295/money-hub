@@ -26,7 +26,13 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
   const [baselineIncome, setBaselineIncome] = useState('');
   const [currentAge, setCurrentAge] = useState('');
   const [retirementAge, setRetirementAge] = useState('');
+  const [pensionPot, setPensionPot] = useState('');
+  const [pensionContribution, setPensionContribution] = useState('');
+  const [pensionGrowthRate, setPensionGrowthRate] = useState(5.0);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [activeTheme, setActiveTheme] = useState<string>(() => {
+    return localStorage.getItem('money-hub-theme') || 'dark-neon';
+  });
 
   // Credentials state
   const [truelayerClientId, setTruelayerClientId] = useState('');
@@ -63,6 +69,9 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
       setBaselineIncome(settingsRes.data.baselineIncome.toString());
       setCurrentAge(settingsRes.data.currentAge.toString());
       setRetirementAge(settingsRes.data.retirementAge.toString());
+      setPensionPot(settingsRes.data.pensionPot.toString());
+      setPensionContribution(settingsRes.data.pensionContribution.toString());
+      setPensionGrowthRate(settingsRes.data.pensionGrowthRate);
 
       // Fetch credentials status
       const statusRes = await axios.get('/api/config/credentials');
@@ -104,13 +113,27 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
       await axios.post('/api/config/settings', {
         baseline_income: parseFloat(baselineIncome),
         current_age: parseInt(currentAge),
-        retirement_age: parseInt(retirementAge)
+        retirement_age: parseInt(retirementAge),
+        pension_pot: parseFloat(pensionPot),
+        pension_contribution: parseFloat(pensionContribution),
+        pension_growth_rate: pensionGrowthRate
       });
       setMessage({ text: 'Parameters saved successfully.', isError: false });
     } catch (err) {
       setMessage({ text: 'Failed to update parameters.', isError: true });
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  const changeTheme = (themeName: string) => {
+    setActiveTheme(themeName);
+    localStorage.setItem('money-hub-theme', themeName);
+    
+    // Apply class to body
+    document.body.className = '';
+    if (themeName !== 'dark-neon') {
+      document.body.classList.add(`theme-${themeName}`);
     }
   };
 
@@ -213,12 +236,12 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
       )}
 
       <div className="grid-2">
-        {/* Baseline configurations */}
+        {/* Baseline & Pension configurations */}
         <div className="glass-panel" style={{ padding: '24px' }}>
           <div className="card-header">
             <h3 className="card-title">
               <Settings size={16} color="#6366f1" />
-              Wealth Parameters & Timeline
+              Wealth & Pension Parameters
             </h3>
           </div>
           
@@ -257,91 +280,184 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
               </div>
             </div>
 
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: '4px' }}>
+              <h4 style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '14px' }}>Pension Predictor Parameters</h4>
+              
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Current Pot Value (£)</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    value={pensionPot} 
+                    onChange={(e) => setPensionPot(e.target.value)} 
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Monthly Contribution (£)</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    value={pensionContribution} 
+                    onChange={(e) => setPensionContribution(e.target.value)} 
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '4px' }}>
+                <label className="form-label">Compounding Growth Projection Rate</label>
+                <div className="toggle-container">
+                  <button 
+                    type="button" 
+                    className={`toggle-option ${pensionGrowthRate === 3.0 ? 'active' : ''}`}
+                    onClick={() => setPensionGrowthRate(3.0)}
+                  >
+                    3% (Low)
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`toggle-option ${pensionGrowthRate === 5.0 ? 'active' : ''}`}
+                    onClick={() => setPensionGrowthRate(5.0)}
+                  >
+                    5% (Med)
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`toggle-option ${pensionGrowthRate === 7.0 ? 'active' : ''}`}
+                    onClick={() => setPensionGrowthRate(7.0)}
+                  >
+                    7% (High)
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start' }} disabled={isSavingSettings}>
               <Save size={16} />
-              Save Parameters
+              Save Settings & Re-calculate
             </button>
           </form>
         </div>
 
-        {/* 2FA Card */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div className="card-header">
-            <h3 className="card-title">
-              <ShieldAlert size={16} color="#ef4444" />
-              Two-Factor Authentication (2FA)
-            </h3>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: '1.5' }}>
-              Keep your financial API keys and banking parameters secure. Enabling 2FA mandates a 6-digit verification code from your authenticator app (Authy, Google Authenticator) upon login.
-            </p>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '14px' }}>Status:</span>
-              <span style={{ 
-                fontSize: '13px', 
-                fontWeight: 'bold', 
-                color: user.twoFactorEnabled ? '#10b981' : '#ef4444',
-                background: user.twoFactorEnabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                padding: '4px 10px',
-                borderRadius: '4px'
-              }}>
-                {user.twoFactorEnabled ? '2FA ENABLED' : '2FA DISABLED'}
-              </span>
+        {/* Column 2: 2FA & Appearance Theme Picker */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          {/* 2FA Card */}
+          <div className="glass-panel" style={{ padding: '24px' }}>
+            <div className="card-header">
+              <h3 className="card-title">
+                <ShieldAlert size={16} color="#ef4444" />
+                Two-Factor Authentication (2FA)
+              </h3>
             </div>
 
-            {!user.twoFactorEnabled && !is2faSetupActive && (
-              <button className="btn-primary" onClick={start2faSetup} style={{ alignSelf: 'flex-start' }}>
-                Setup 2FA
-              </button>
-            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: '1.5' }}>
+                Keep your financial API keys and banking parameters secure. Enabling 2FA mandates a 6-digit verification code from your authenticator app (Authy, Google Authenticator) upon login.
+              </p>
 
-            {user.twoFactorEnabled && (
-              <button className="btn-secondary" onClick={disable2fa} style={{ alignSelf: 'flex-start', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }}>
-                Disable 2FA
-              </button>
-            )}
-
-            {is2faSetupActive && qrCodeUrl && (
-              <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '20px', alignItems: 'center', marginTop: '10px' }}>
-                <img src={qrCodeUrl} alt="2FA QR Code" style={{ border: '4px solid white', borderRadius: '8px', width: '120px', height: '120px' }} />
-                
-                <form onSubmit={verify2faToken} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                    Scan this QR code with your authenticator app, then enter the 6-digit code to enable:
-                  </span>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. 123456" 
-                      className="form-input" 
-                      value={twoFactorToken}
-                      onChange={(e) => setTwoFactorToken(e.target.value)}
-                      maxLength={6}
-                      required
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="submit" className="btn-primary" style={{ padding: '8px 14px', fontSize: '13px' }}>
-                      Verify & Enable
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn-secondary" 
-                      style={{ padding: '8px 14px', fontSize: '13px' }}
-                      onClick={() => {
-                        setIs2faSetupActive(false);
-                        setQrCodeUrl(null);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>Status:</span>
+                <span style={{ 
+                  fontSize: '13px', 
+                  fontWeight: 'bold', 
+                  color: user.twoFactorEnabled ? '#10b981' : '#ef4444',
+                  background: user.twoFactorEnabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  padding: '4px 10px',
+                  borderRadius: '4px'
+                }}>
+                  {user.twoFactorEnabled ? '2FA ENABLED' : '2FA DISABLED'}
+                </span>
               </div>
-            )}
+
+              {!user.twoFactorEnabled && !is2faSetupActive && (
+                <button className="btn-primary" onClick={start2faSetup} style={{ alignSelf: 'flex-start' }}>
+                  Setup 2FA
+                </button>
+              )}
+
+              {user.twoFactorEnabled && (
+                <button className="btn-secondary" onClick={disable2fa} style={{ alignSelf: 'flex-start', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }}>
+                  Disable 2FA
+                </button>
+              )}
+
+              {is2faSetupActive && qrCodeUrl && (
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '20px', alignItems: 'center', marginTop: '10px' }}>
+                  <img src={qrCodeUrl} alt="2FA QR Code" style={{ border: '4px solid white', borderRadius: '8px', width: '120px', height: '120px' }} />
+                  
+                  <form onSubmit={verify2faToken} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                      Scan this QR code with your authenticator app, then enter the 6-digit code to enable:
+                    </span>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 123456" 
+                        className="form-input" 
+                        value={twoFactorToken}
+                        onChange={(e) => setTwoFactorToken(e.target.value)}
+                        maxLength={6}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="submit" className="btn-primary" style={{ padding: '8px 14px', fontSize: '13px' }}>
+                        Verify & Enable
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-secondary" 
+                        style={{ padding: '8px 14px', fontSize: '13px' }}
+                        onClick={() => {
+                          setIs2faSetupActive(false);
+                          setQrCodeUrl(null);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Theme Picker Card */}
+          <div className="glass-panel" style={{ padding: '24px' }}>
+            <div className="card-header">
+              <h3 className="card-title">
+                <Settings size={16} color="#6366f1" />
+                Theme & Appearance
+              </h3>
+            </div>
+            <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '16px', lineHeight: '1.4' }}>
+              Customize your Money Hub dashboard theme. Select a preset color palette below.
+            </p>
+            <div className="theme-picker-container">
+              <div 
+                className={`theme-card ${activeTheme === 'dark-neon' ? 'active' : ''}`}
+                onClick={() => changeTheme('dark-neon')}
+              >
+                <div className="theme-dot" style={{ background: 'linear-gradient(135deg, #6366f1, #0ea5e9)' }} />
+                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>Dark Neon</span>
+              </div>
+              <div 
+                className={`theme-card ${activeTheme === 'midnight-blue' ? 'active' : ''}`}
+                onClick={() => changeTheme('midnight-blue')}
+              >
+                <div className="theme-dot" style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }} />
+                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>Midnight Blue</span>
+              </div>
+              <div 
+                className={`theme-card ${activeTheme === 'forest-green' ? 'active' : ''}`}
+                onClick={() => changeTheme('forest-green')}
+              >
+                <div className="theme-dot" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }} />
+                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>Forest Green</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

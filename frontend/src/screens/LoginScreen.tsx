@@ -122,7 +122,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           }}>
             <Wallet size={24} color="white" />
           </div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, fontFamily: 'Outfit' }}>WealthHub</h1>
+          <h1 style={{ fontSize: '26px', fontWeight: 800, fontFamily: 'Outfit' }}>Money Hub</h1>
           <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>
             {show2FA ? 'Verification Required' : 'Personal Wealth Orchestrator'}
           </p>

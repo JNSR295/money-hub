@@ -244,6 +244,7 @@ function DashboardScreen() {
                     outerRadius={80}
                     paddingAngle={4}
                     dataKey="value"
+                    stroke="none"
                   >
                     {breakdownData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -272,141 +273,49 @@ function DashboardScreen() {
         </div>
       </div>
 
-      {/* Pension Predictor Section */}
-      <div className="grid-2">
-        {/* Param settings form */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div className="card-header">
-            <h3 className="card-title">
-              <PiggyBank size={16} color="#10b981" />
-              Pension Parameters
-            </h3>
-          </div>
-          <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Current Pot Value (£)</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={pensionPot} 
-                  onChange={(e) => setPensionPot(parseFloat(e.target.value) || 0)} 
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Monthly Contribution (£)</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={pensionContribution} 
-                  onChange={(e) => setPensionContribution(parseFloat(e.target.value) || 0)} 
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Current Age</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={currentAge} 
-                  onChange={(e) => setCurrentAge(parseInt(e.target.value) || 0)} 
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Target Retirement Age</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={retirementAge} 
-                  onChange={(e) => setRetirementAge(parseInt(e.target.value) || 0)} 
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Compounding Growth Projection Rate</label>
-              <div className="toggle-container">
-                <button 
-                  type="button" 
-                  className={`toggle-option ${selectedGrowthRate === 3.0 ? 'active' : ''}`}
-                  onClick={() => setSelectedGrowthRate(3.0)}
-                >
-                  3% (Low)
-                </button>
-                <button 
-                  type="button" 
-                  className={`toggle-option ${selectedGrowthRate === 5.0 ? 'active' : ''}`}
-                  onClick={() => setSelectedGrowthRate(5.0)}
-                >
-                  5% (Med)
-                </button>
-                <button 
-                  type="button" 
-                  className={`toggle-option ${selectedGrowthRate === 7.0 ? 'active' : ''}`}
-                  onClick={() => setSelectedGrowthRate(7.0)}
-                >
-                  7% (High)
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '10px' }} disabled={isSavingSettings}>
-              <Save size={16} />
-              {isSavingSettings ? 'Recalculating...' : 'Recalculate & Save'}
-            </button>
-          </form>
+      {/* Pension Predictor Trajectory Section */}
+      <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+        <div className="card-header">
+          <h3 className="card-title">
+            <TrendingUp size={16} color="#10b981" />
+            Pension Pot Growth Trajectory
+          </h3>
+          {data && (
+            <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 'bold' }}>
+              Value at age {retirementAge}: £{(selectedGrowthRate === 3.0 ? data.pensionProjections.growth3pct : selectedGrowthRate === 5.0 ? data.pensionProjections.growth5pct : data.pensionProjections.growth7pct).toLocaleString()}
+            </span>
+          )}
         </div>
-
-        {/* Future projection trajectory chart */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div className="card-header">
-            <h3 className="card-title">
-              <TrendingUp size={16} color="#10b981" />
-              Pension Pot Growth Trajectory
-            </h3>
-            {data && (
-              <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 'bold' }}>
-                Value at age {retirementAge}: £{(selectedGrowthRate === 3.0 ? data.pensionProjections.growth3pct : selectedGrowthRate === 5.0 ? data.pensionProjections.growth5pct : data.pensionProjections.growth7pct).toLocaleString()}
-              </span>
-            )}
-          </div>
-          <div style={{ flex: 1, minHeight: '220px' }}>
-            {trajectoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={220}>
-                <AreaChart data={trajectoryData}>
-                  <defs>
-                    <linearGradient id="colorPension" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="age" stroke="#6b7280" style={{ fontSize: '11px' }} />
-                  <YAxis 
-                    stroke="#6b7280" 
-                    style={{ fontSize: '11px' }} 
-                    tickFormatter={(val) => `£${(val/1000)}k`}
-                  />
-                  <Tooltip 
-                    formatter={(value) => `£${(value as number).toLocaleString()}`}
-                    labelFormatter={(label) => `Age: ${label}`}
-                    contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="#10b981" fillOpacity={1} fill="url(#colorPension)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '14px' }}>
-                Enter current age and target age to view trajectory graph.
-              </div>
-            )}
-          </div>
+        <div style={{ flex: 1, minHeight: '300px' }}>
+          {trajectoryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={trajectoryData}>
+                <defs>
+                  <linearGradient id="colorPension" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="age" stroke="#6b7280" style={{ fontSize: '11px' }} />
+                <YAxis 
+                  stroke="#6b7280" 
+                  style={{ fontSize: '11px' }} 
+                  tickFormatter={(val) => `£${(val/1000)}k`}
+                />
+                <Tooltip 
+                  formatter={(value) => `£${(value as number).toLocaleString()}`}
+                  labelFormatter={(label) => `Age: ${label}`}
+                  contentStyle={{ background: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                />
+                <Area type="monotone" dataKey="value" stroke="#10b981" fillOpacity={1} fill="url(#colorPension)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '14px', minHeight: '300px' }}>
+              Enter current age and target age to view trajectory graph.
+            </div>
+          )}
         </div>
       </div>
 

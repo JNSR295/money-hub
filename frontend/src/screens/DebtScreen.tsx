@@ -255,9 +255,9 @@ function DebtScreen() {
                           </ResponsiveContainer>
                         )}
                       </div>
-
+                      
                       {/* Info on interest */}
-                      <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.03)', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                      <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.03)', border: '1px solid rgba(239, 68, 68, 0.1)', marginTop: '16px' }}>
                         <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <TrendingDown size={14} color="#ef4444" />
                           Payoff Valuation Stats
@@ -287,8 +287,8 @@ function DebtScreen() {
 
         {/* Right column - Debt distribution visualization */}
         <div>
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h4 style={{ fontSize: '16px', marginBottom: '20px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+            <h4 style={{ fontSize: '16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <TrendingDown size={16} color="#ef4444" />
               Debt Allocation
             </h4>
@@ -305,6 +305,7 @@ function DebtScreen() {
                       outerRadius={65}
                       paddingAngle={3}
                       dataKey="value"
+                      stroke="none"
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -344,3 +345,6 @@ function DebtScreen() {
 }
 
 export default DebtScreen;
+
+
+

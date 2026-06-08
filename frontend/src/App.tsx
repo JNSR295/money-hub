@@ -34,8 +34,13 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
-  // Verify session on mount
+  // Verify session on mount and apply theme
   useEffect(() => {
+    const savedTheme = localStorage.getItem('money-hub-theme') || 'dark-neon';
+    document.body.className = '';
+    if (savedTheme !== 'dark-neon') {
+      document.body.classList.add(`theme-${savedTheme}`);
+    }
     checkSession();
   }, []);
 
@@ -101,69 +106,71 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      {/* Header & Sticky Nav */}
-      <header className="app-header glass-panel">
-        <div className="logo-container">
-          <div className="logo-icon">
-            <Wallet size={20} color="white" />
+    <div className="app-layout">
+      {/* Sidebar Navigation */}
+      <aside className="app-sidebar">
+        <div>
+          <div className="logo-container">
+            <div className="logo-icon">
+              <Wallet size={20} color="white" />
+            </div>
+            <span className="logo-text">Money Hub</span>
           </div>
-          <span className="logo-text">WealthHub</span>
+
+          <nav className="nav-links">
+            <button 
+              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              <LayoutDashboard size={16} />
+              Dashboard
+            </button>
+            
+            <button 
+              className={`nav-item ${activeTab === 'debts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('debts')}
+            >
+              <CreditCard size={16} />
+              Debts
+            </button>
+
+            <button 
+              className={`nav-item ${activeTab === 'accounts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('accounts')}
+            >
+              <PiggyBank size={16} />
+              Accounts
+            </button>
+
+            <button 
+              className={`nav-item ${activeTab === 'budget' ? 'active' : ''}`}
+              onClick={() => setActiveTab('budget')}
+            >
+              <CalendarDays size={16} />
+              Budget Matrix
+            </button>
+
+            <button 
+              className={`nav-item ${activeTab === 'config' ? 'active' : ''}`}
+              onClick={() => setActiveTab('config')}
+            >
+              <Settings size={16} />
+              Settings
+            </button>
+          </nav>
         </div>
 
-        <nav className="nav-links">
-          <button 
-            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            <LayoutDashboard size={16} />
-            Dashboard
-          </button>
-          
-          <button 
-            className={`nav-item ${activeTab === 'debts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('debts')}
-          >
-            <CreditCard size={16} />
-            Debts
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'accounts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('accounts')}
-          >
-            <PiggyBank size={16} />
-            Accounts
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'budget' ? 'active' : ''}`}
-            onClick={() => setActiveTab('budget')}
-          >
-            <CalendarDays size={16} />
-            Budget Matrix
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'config' ? 'active' : ''}`}
-            onClick={() => setActiveTab('config')}
-          >
-            <Settings size={16} />
-            Settings
-          </button>
-        </nav>
-
-        <div className="user-badge">
-          <span style={{ fontSize: '13px', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="user-badge-sidebar">
+          <span className="user-email-text">
             <ShieldCheck size={14} color="#10b981" />
             {user.email}
           </span>
           <button className="logout-btn" onClick={handleLogout}>
-            <LogOut size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+            <LogOut size={14} />
             Log Out
           </button>
         </div>
-      </header>
+      </aside>
 
       {/* Screen Render */}
       <main className="main-content">
