@@ -77,7 +77,7 @@ function DashboardScreen() {
       setCurrentAge(settings.currentAge);
       setSelectedGrowthRate(settings.pensionGrowthRate);
     } catch (err) {
-      setError('Stale or unavailable connection to bank feeds. Displaying demo values.');
+      setError('Unable to connect to bank feeds. Please check your API credentials in Settings.');
       // Since it's zero-retention, fallback is managed server side, but just in case:
       console.error(err);
     } finally {

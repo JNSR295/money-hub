@@ -45,11 +45,10 @@ export async function getTrading212Portfolio(userId: number): Promise<Trading212
   }
 }
 
-// --- MOCK DATA FOR DEMO MODE ---
 export function getMockPortfolio(): Trading212Data {
   return {
-    value: 28450.40, // Total portfolio value
-    cash: 1250.00,
-    profitLoss: 4230.15 // +£4,230.15 all-time return
+    value: 0,
+    cash: 0,
+    profitLoss: 0
   };
 }

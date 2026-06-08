@@ -77,10 +77,9 @@ export async function getPayPalBalance(userId: number): Promise<PayPalData> {
   }
 }
 
-// --- MOCK DATA FOR DEMO MODE ---
 export function getMockPayPal(): PayPalData {
   return {
-    balance: 840.50, // PayPal Wallet balance
+    balance: 0,
     currency: 'GBP'
   };
 }

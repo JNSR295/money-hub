@@ -659,7 +659,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
             <div style={{ display: 'flex', gap: '8px', padding: '12px', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
               <Info size={16} color="#6366f1" style={{ flexShrink: 0, marginTop: '2px' }} />
               <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: '1.4' }}>
-                <strong>Demo Mode Active:</strong> If any API vault credentials are left empty, the application automatically displays simulated sandboxed values so you can test the charts and timeline instantly!
+                Connect your financial providers above to see live data on your dashboard.
               </p>
             </div>
           </div>

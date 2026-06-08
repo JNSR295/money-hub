@@ -244,60 +244,10 @@ async function fetchCards(baseApiUrl: string, token: string): Promise<any[]> {
   return cardsWithBalances;
 }
 
-// --- MOCK DATA FOR DEMO MODE ---
 export function getMockAccounts(): any[] {
-  return [
-    {
-      id: 'mock-lloyds-current',
-      name: 'Lloyds Classic Current',
-      provider: 'Lloyds Bank',
-      type: 'current',
-      balance: 3450.20,
-      currency: 'GBP',
-      accountNumber: '•••5839'
-    },
-    {
-      id: 'mock-santander-current',
-      name: 'Santander 123 Current',
-      provider: 'Santander UK',
-      type: 'current',
-      balance: 1845.60,
-      currency: 'GBP',
-      accountNumber: '•••9210'
-    },
-    {
-      id: 'mock-lloyds-savings',
-      name: 'Lloyds Club Saver',
-      provider: 'Lloyds Bank',
-      type: 'savings',
-      balance: 14200.00,
-      currency: 'GBP',
-      accountNumber: '•••1122'
-    }
-  ];
+  return [];
 }
 
 export function getMockCards(): any[] {
-  return [
-    {
-      id: 'mock-amex-gold',
-      name: 'Amex Gold Credit Card',
-      provider: 'American Express',
-      type: 'credit_card',
-      balance: 1250.75, // Outstanding balance (our debt)
-      available: 8749.25,
-      currency: 'GBP',
-      accountNumber: '••••84002'
-    },
-    {
-      id: 'mock-lloyds-cc',
-      name: 'Lloyds Platinum Card',
-      provider: 'Lloyds Bank',
-      type: 'credit_card',
-      balance: 450.00, // Outstanding balance (our debt)
-      available: 4550.00,
-      currency: 'GBP',
-      accountNumber: '••••9281'
-    }
-  ];
+  return [];
 }

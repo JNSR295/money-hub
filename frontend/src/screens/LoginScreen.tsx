@@ -198,7 +198,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </div>
           <h1 style={{ fontSize: '26px', fontWeight: 800, fontFamily: 'Outfit' }}>Money Hub</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-            {show2FA ? 'Verification Required' : 'Personal Wealth Orchestrator'}
+            {show2FA ? 'Verification Required' : 'Personal Wealth Tracker'}
           </p>
         </div>
 
@@ -279,7 +279,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <label className="form-label">First Name</label>
                   <input
                     type="text"
-                    placeholder="Jed"
+                    placeholder="First Name"
                     className="form-input"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -291,7 +291,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <label className="form-label">Last Name</label>
                   <input
                     type="text"
-                    placeholder="User"
+                    placeholder="Last Name"
                     className="form-input"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -332,6 +332,22 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 required
                 disabled={isLoading}
               />
+              {isRegistering && password.length > 0 && (
+                <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: '1.8' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: password.length >= 8 ? '#10b981' : 'var(--text-secondary)' }}>
+                    {password.length >= 8 ? '✓' : '○'} At least 8 characters
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: /[A-Z]/.test(password) ? '#10b981' : 'var(--text-secondary)' }}>
+                    {/[A-Z]/.test(password) ? '✓' : '○'} One uppercase letter
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: /\d/.test(password) ? '#10b981' : 'var(--text-secondary)' }}>
+                    {/\d/.test(password) ? '✓' : '○'} One number
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) ? '#10b981' : 'var(--text-secondary)' }}>
+                    {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) ? '✓' : '○'} One special character
+                  </div>
+                </div>
+              )}
             </div>
 
             <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isLoading}>

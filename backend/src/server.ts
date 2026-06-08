@@ -7,7 +7,7 @@ import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import { pool, query, initializeDatabase } from './db';
 import { encrypt, decrypt } from './utils/crypto';
-import { getTrueLayerAccounts, getTrueLayerCards, getMockAccounts, getMockCards } from './services/truelayer';
+import { getTrueLayerAccounts, getTrueLayerCards } from './services/truelayer';
 import { getTrading212Portfolio } from './services/t212';
 import { getPayPalBalance } from './services/paypal';
 import axios from 'axios';
@@ -108,11 +108,6 @@ app.post('/api/register', async (req: Request, res: Response) => {
     return res.status(400).json({ 
       error: 'Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character.' 
     });
-  }
-
-  // STRICT email registration validation (silently return a generic error)
-  if (email.toLowerCase().trim() !== 'jed@jnsr.uk') {
-    return res.status(400).json({ error: 'Registration failed. Please try again.' });
   }
 
   try {
