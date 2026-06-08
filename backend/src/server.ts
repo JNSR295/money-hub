@@ -349,12 +349,12 @@ app.post('/api/config/credentials', requireAuth, async (req: Request, res: Respo
   const { truelayer_client_id, truelayer_client_secret, trading212_api_key, paypal_client_id, paypal_client_secret } = req.body;
 
   try {
-    // Encrypt credentials before saving
-    const encClientId = truelayer_client_id ? encrypt(truelayer_client_id) : null;
-    const encClientSecret = truelayer_client_secret ? encrypt(truelayer_client_secret) : null;
-    const encT212Key = trading212_api_key ? encrypt(trading212_api_key) : null;
-    const encPaypalId = paypal_client_id ? encrypt(paypal_client_id) : null;
-    const encPaypalSecret = paypal_client_secret ? encrypt(paypal_client_secret) : null;
+    // Encrypt credentials before saving, ignoring masked placeholders
+    const encClientId = (truelayer_client_id && truelayer_client_id !== '••••••••••••') ? encrypt(truelayer_client_id) : null;
+    const encClientSecret = (truelayer_client_secret && truelayer_client_secret !== '••••••••••••') ? encrypt(truelayer_client_secret) : null;
+    const encT212Key = (trading212_api_key && trading212_api_key !== '••••••••••••') ? encrypt(trading212_api_key) : null;
+    const encPaypalId = (paypal_client_id && paypal_client_id !== '••••••••••••') ? encrypt(paypal_client_id) : null;
+    const encPaypalSecret = (paypal_client_secret && paypal_client_secret !== '••••••••••••') ? encrypt(paypal_client_secret) : null;
 
     // Check if user credentials record exists
     const check = await query('SELECT user_id FROM credentials WHERE user_id = $1', [userId]);
@@ -387,13 +387,13 @@ app.post('/api/config/credentials', requireAuth, async (req: Request, res: Respo
   }
 });
 
-// Get Configuration Status (flags indicating if configured, without showing keys)
+// Get Configuration Status and Client IDs
 app.get('/api/config/credentials', requireAuth, async (req: Request, res: Response) => {
   const userId = req.session.userId!;
 
   try {
     const result = await query(
-      `SELECT truelayer_client_id, trading212_api_key, paypal_client_id, truelayer_access_token 
+      `SELECT truelayer_client_id, truelayer_client_secret, trading212_api_key, paypal_client_id, paypal_client_secret, truelayer_access_token 
        FROM credentials WHERE user_id = $1`,
       [userId]
     );
@@ -403,16 +403,31 @@ app.get('/api/config/credentials', requireAuth, async (req: Request, res: Respon
         truelayerConfigured: false,
         truelayerConnected: false,
         trading212Configured: false,
-        paypalConfigured: false
+        paypalConfigured: false,
+        truelayerClientId: '',
+        truelayerClientSecret: '',
+        trading212Key: '',
+        paypalClientId: '',
+        paypalSecret: ''
       });
     }
 
     const row = result.rows[0];
+    
+    // Decrypt client IDs if present
+    const truelayerClientId = row.truelayer_client_id ? decrypt(row.truelayer_client_id) : '';
+    const paypalClientId = row.paypal_client_id ? decrypt(row.paypal_client_id) : '';
+
     res.json({
       truelayerConfigured: !!row.truelayer_client_id,
       truelayerConnected: !!row.truelayer_access_token,
       trading212Configured: !!row.trading212_api_key,
-      paypalConfigured: !!row.paypal_client_id
+      paypalConfigured: !!row.paypal_client_id,
+      truelayerClientId,
+      truelayerClientSecret: row.truelayer_client_secret ? '••••••••••••' : '',
+      trading212Key: row.trading212_api_key ? '••••••••••••' : '',
+      paypalClientId,
+      paypalSecret: row.paypal_client_secret ? '••••••••••••' : ''
     });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });

@@ -86,6 +86,11 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
       // Fetch credentials status
       const statusRes = await axios.get('/api/config/credentials');
       setStatus(statusRes.data);
+      if (statusRes.data.truelayerClientId) setTruelayerClientId(statusRes.data.truelayerClientId);
+      if (statusRes.data.truelayerClientSecret) setTruelayerClientSecret(statusRes.data.truelayerClientSecret);
+      if (statusRes.data.trading212Key) setTrading212Key(statusRes.data.trading212Key);
+      if (statusRes.data.paypalClientId) setPaypalId(statusRes.data.paypalClientId);
+      if (statusRes.data.paypalSecret) setPaypalSecret(statusRes.data.paypalSecret);
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -160,13 +165,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
         paypal_client_secret: paypalSecret || undefined
       });
       
-      setTruelayerClientId('');
-      setTruelayerClientSecret('');
-      setTrading212Key('');
-      setPaypalId('');
-      setPaypalSecret('');
-      
-      setMessage({ text: 'API Credentials stored and encrypted.', isError: false });
+      setMessage({ text: 'API Credentials stored successfully.', isError: false });
       fetchSettingsAndStatus();
     } catch (err) {
       setMessage({ text: 'Failed to store credentials.', isError: true });
@@ -535,7 +534,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
         <div className="card-header">
           <h3 className="card-title">
             <Key size={16} color="#f59e0b" />
-            API Vault Credentials (AES-256-GCM Encrypted)
+            API Vault Credentials
           </h3>
         </div>
 
@@ -548,7 +547,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Client ID</label>
                   <input 
-                    type="password" 
+                    type="text" 
                     placeholder="truelayer-client-id" 
                     className="form-input"
                     value={truelayerClientId}
@@ -588,7 +587,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Client ID</label>
                   <input 
-                    type="password" 
+                    type="text" 
                     placeholder="paypal-client-id" 
                     className="form-input"
                     value={paypalId}
@@ -610,7 +609,7 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
 
             <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '10px' }} disabled={isSavingCreds}>
               <Save size={16} />
-              Encrypt & Save API Vault
+              Save API Vault
             </button>
           </form>
 
