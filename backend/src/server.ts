@@ -482,6 +482,89 @@ app.get('/api/config/settings', requireAuth, async (req: Request, res: Response)
 });
 
 // ==========================================
+// 3.5. MANUAL ACCOUNTS / CUSTOM ASSETS
+// ==========================================
+
+// Get Manual Accounts
+app.get('/api/manual-accounts', requireAuth, async (req: Request, res: Response) => {
+  const userId = req.session.userId!;
+  try {
+    const result = await query(
+      'SELECT id, name, provider, balance, type FROM manual_accounts WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
+    res.json(result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      provider: row.provider,
+      balance: parseFloat(row.balance),
+      type: row.type
+    })));
+  } catch (error) {
+    console.error('Failed to get manual accounts:', error);
+    res.status(500).json({ error: 'Failed to retrieve manual accounts.' });
+  }
+});
+
+// Create or Update Manual Account
+app.post('/api/manual-accounts', requireAuth, async (req: Request, res: Response) => {
+  const userId = req.session.userId!;
+  const { id, name, provider, balance, type } = req.body;
+
+  if (!name || !provider || balance === undefined || !type) {
+    return res.status(400).json({ error: 'Name, provider, balance, and type are required.' });
+  }
+
+  if (!['current', 'savings', 'investments', 'pension'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid account type.' });
+  }
+
+  try {
+    if (id) {
+      // Update existing manual account
+      const result = await query(
+        'UPDATE manual_accounts SET name = $1, provider = $2, balance = $3, type = $4 WHERE id = $5 AND user_id = $6 RETURNING *',
+        [name, provider, parseFloat(balance), type, id, userId]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Manual account not found.' });
+      }
+      res.json({ success: true, message: 'Manual account updated.', account: result.rows[0] });
+    } else {
+      // Create new manual account
+      const result = await query(
+        'INSERT INTO manual_accounts (user_id, name, provider, balance, type) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [userId, name, provider, parseFloat(balance), type]
+      );
+      res.json({ success: true, message: 'Manual account created.', account: result.rows[0] });
+    }
+  } catch (error) {
+    console.error('Failed to save manual account:', error);
+    res.status(500).json({ error: 'Failed to save manual account.' });
+  }
+});
+
+// Delete Manual Account
+app.delete('/api/manual-accounts/:id', requireAuth, async (req: Request, res: Response) => {
+  const userId = req.session.userId!;
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      'DELETE FROM manual_accounts WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Manual account not found.' });
+    }
+    res.json({ success: true, message: 'Manual account deleted.' });
+  } catch (error) {
+    console.error('Failed to delete manual account:', error);
+    res.status(500).json({ error: 'Failed to delete manual account.' });
+  }
+});
+
+// ==========================================
 // 4. TRUELAYER OAUTH REDIRECTS
 // ==========================================
 
@@ -752,12 +835,23 @@ app.get('/api/accounts', requireAuth, async (req: Request, res: Response) => {
     const settingsRes = await query('SELECT pension_pot FROM user_settings WHERE user_id = $1', [userId]);
     const pensionPot = parseFloat(settingsRes.rows[0]?.pension_pot || '0.00');
 
-    const liquidAccounts = tlAccounts
-      .filter(a => a.type === 'current')
-      .map(a => ({ name: a.name, provider: a.provider, balance: a.balance, accountNumber: a.accountNumber }));
+    // Fetch manual accounts
+    const manualResult = await query('SELECT name, provider, balance, type FROM manual_accounts WHERE user_id = $1', [userId]);
+    const manualAccounts = manualResult.rows.map(row => ({
+      name: row.name,
+      provider: `${row.provider} (Manual)`,
+      balance: parseFloat(row.balance || '0.00'),
+      type: row.type
+    }));
+
+    const liquidAccounts = [
+      ...tlAccounts.filter(a => a.type === 'current').map(a => ({ name: a.name, provider: a.provider, balance: a.balance, accountNumber: a.accountNumber })),
+      ...manualAccounts.filter(a => a.type === 'current').map(a => ({ name: a.name, provider: a.provider, balance: a.balance }))
+    ];
 
     const growthAccounts = [
       ...tlAccounts.filter(a => a.type === 'savings').map(a => ({ name: a.name, provider: a.provider, balance: a.balance, type: 'savings' })),
+      ...manualAccounts.filter(a => a.type !== 'current'),
       { name: 'Trading 212 Portfolio', provider: 'Trading 212', balance: t212.value, type: 'investments' },
       { name: 'Aviva Pension Pot', provider: 'Aviva (Manual)', balance: pensionPot, type: 'pension' }
     ];

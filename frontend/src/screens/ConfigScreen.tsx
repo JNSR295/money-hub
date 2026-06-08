@@ -57,9 +57,18 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
   const [is2faSetupActive, setIs2faSetupActive] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
+  // Manual Accounts state
+  const [manualAccounts, setManualAccounts] = useState<any[]>([]);
+  const [isSavingManual, setIsSavingManual] = useState(false);
+  const [newAccName, setNewAccName] = useState('');
+  const [newAccProvider, setNewAccProvider] = useState('');
+  const [newAccBalance, setNewAccBalance] = useState('');
+  const [newAccType, setNewAccType] = useState('savings');
+
   useEffect(() => {
     fetchSettingsAndStatus();
     checkUrlParams();
+    fetchManualAccounts();
   }, []);
 
   const fetchSettingsAndStatus = async () => {
@@ -174,6 +183,54 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
       window.location.href = response.data.authUrl;
     } catch (err: any) {
       setMessage({ text: err.response?.data?.error || 'TrueLayer client credentials must be configured first.', isError: true });
+    }
+  };
+
+  const fetchManualAccounts = async () => {
+    try {
+      const response = await axios.get('/api/manual-accounts');
+      setManualAccounts(response.data);
+    } catch (err) {
+      console.error('Failed to fetch manual accounts:', err);
+    }
+  };
+
+  const handleAddManualAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccName || !newAccProvider || !newAccBalance) return;
+    setIsSavingManual(true);
+    setMessage(null);
+    try {
+      await axios.post('/api/manual-accounts', {
+        name: newAccName,
+        provider: newAccProvider,
+        balance: parseFloat(newAccBalance),
+        type: newAccType
+      });
+      setNewAccName('');
+      setNewAccProvider('');
+      setNewAccBalance('');
+      setNewAccType('savings');
+      setMessage({ text: 'Manual account added successfully.', isError: false });
+      fetchManualAccounts();
+      onUserUpdate();
+    } catch (err) {
+      setMessage({ text: 'Failed to add manual account.', isError: true });
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
+
+  const handleDeleteManualAccount = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this account?')) return;
+    setMessage(null);
+    try {
+      await axios.delete(`/api/manual-accounts/${id}`);
+      setMessage({ text: 'Manual account deleted successfully.', isError: false });
+      fetchManualAccounts();
+      onUserUpdate();
+    } catch (err) {
+      setMessage({ text: 'Failed to delete manual account.', isError: true });
     }
   };
 
@@ -595,6 +652,127 @@ function ConfigScreen({ user, onUserUpdate }: ConfigScreenProps) {
                 <strong>Demo Mode Active:</strong> If any API vault credentials are left empty, the application automatically displays simulated sandboxed values so you can test the charts and timeline instantly!
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Manual Accounts Section */}
+      <div className="glass-panel" style={{ padding: '24px', marginTop: '30px' }}>
+        <div className="card-header">
+          <h3 className="card-title">
+            <Settings size={16} color="#10b981" />
+            Manual Accounts & Custom Assets (e.g. Cash ISA)
+          </h3>
+        </div>
+        
+        <div className="grid-2" style={{ gap: '30px', marginTop: '15px' }}>
+          {/* List of existing manual accounts */}
+          <div>
+            <h4 style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '14px' }}>Current Custom Accounts</h4>
+            {manualAccounts.length === 0 ? (
+              <div style={{ color: '#6b7280', fontSize: '13px', padding: '30px', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                No manual accounts configured. Add your Cash ISA or manual savings on the right!
+              </div>
+            ) : (
+              <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 8px' }}>Account Name</th>
+                      <th style={{ padding: '10px 8px' }}>Provider</th>
+                      <th style={{ padding: '10px 8px' }}>Type</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'right' }}>Balance</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {manualAccounts.map(acc => (
+                      <tr key={acc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '10px 8px', color: 'white', fontWeight: '500' }}>{acc.name}</td>
+                        <td style={{ padding: '10px 8px', color: '#9ca3af' }}>{acc.provider}</td>
+                        <td style={{ padding: '10px 8px', color: '#9ca3af', textTransform: 'capitalize' }}>
+                          {acc.type === 'current' ? 'Current' : acc.type === 'savings' ? 'Savings' : acc.type === 'investments' ? 'Investments' : 'Pension'}
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', color: '#10b981', fontWeight: 'bold' }}>
+                          £{acc.balance.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                          <button 
+                            type="button"
+                            className="logout-btn" 
+                            style={{ padding: '4px 8px', fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            onClick={() => handleDeleteManualAccount(acc.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Add Manual Account Form */}
+          <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <h4 style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '14px' }}>Add Custom Account</h4>
+            <form onSubmit={handleAddManualAccount} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="form-group">
+                <label className="form-label">Account Name</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. Cash ISA"
+                  value={newAccName} 
+                  onChange={(e) => setNewAccName(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Provider Name</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. Trading 212"
+                  value={newAccProvider} 
+                  onChange={(e) => setNewAccProvider(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Current Balance (£)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="form-input" 
+                  placeholder="e.g. 5000.00"
+                  value={newAccBalance} 
+                  onChange={(e) => setNewAccBalance(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Account Type</label>
+                <select 
+                  className="form-input" 
+                  style={{ backgroundColor: '#0b0f19', color: 'white' }}
+                  value={newAccType} 
+                  onChange={(e) => setNewAccType(e.target.value)}
+                  required
+                >
+                  <option value="savings" style={{ backgroundColor: '#0b0f19' }}>Savings Account</option>
+                  <option value="investments" style={{ backgroundColor: '#0b0f19' }}>Investments</option>
+                  <option value="current" style={{ backgroundColor: '#0b0f19' }}>Current Account</option>
+                  <option value="pension" style={{ backgroundColor: '#0b0f19' }}>Pension Pot</option>
+                </select>
+              </div>
+              
+              <button type="submit" className="btn-primary" style={{ marginTop: '8px', padding: '10px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} disabled={isSavingManual}>
+                <Save size={16} />
+                Add Account
+              </button>
+            </form>
           </div>
         </div>
       </div>

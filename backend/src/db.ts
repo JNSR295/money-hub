@@ -131,6 +131,19 @@ export async function initializeDatabase() {
       );
     `);
 
+    // Create manual_accounts table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS manual_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        provider VARCHAR(100) NOT NULL,
+        balance NUMERIC(12, 2) DEFAULT 0.00,
+        type VARCHAR(50) CHECK (type IN ('current', 'savings', 'investments', 'pension')) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     await client.query('COMMIT');
     console.log('✅ Database schema initialized successfully!');
   } catch (err) {
