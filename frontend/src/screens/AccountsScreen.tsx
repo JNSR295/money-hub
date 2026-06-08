@@ -84,7 +84,7 @@ function AccountsScreen() {
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '14px' }}>
-            Available cash in checking/current accounts, ready for routing
+            Available cash in current account
           </div>
         </div>
 

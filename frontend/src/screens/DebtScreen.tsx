@@ -48,6 +48,7 @@ function DebtScreen() {
   const [debts, setDebts] = useState<DebtRepaymentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<string>('');
 
   // Payoff Plan form state
   const [providerName, setProviderName] = useState('');
@@ -64,6 +65,13 @@ function DebtScreen() {
     try {
       const response = await axios.get('/api/debts');
       setDebts(response.data.debts);
+      setLastSynced(new Date().toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }));
     } catch (err) {
       setError('Stale or unavailable connection to bank feeds.');
     } finally {
@@ -115,7 +123,7 @@ function DebtScreen() {
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '14px' }}>
-            Dynamically loaded from Open Banking API (Zero-retention)
+            Last Synced: {lastSynced || 'N/A'}
           </div>
         </div>
 
@@ -123,11 +131,11 @@ function DebtScreen() {
         <div className="glass-panel" style={{ padding: '24px', gridColumn: 'span 2' }}>
           <h3 style={{ fontSize: '16px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Calculator size={16} color="#ef4444" />
-            Configure Debt Amortization Plan
+            Add Debt
           </h3>
           <form onSubmit={handleConfigurePlan} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div className="form-group" style={{ flex: 1, minWidth: '160px', marginBottom: 0 }}>
-              <label className="form-label">Provider Name (Exact Match)</label>
+              <label className="form-label">Provider Name</label>
               <select 
                 className="form-input" 
                 value={providerName} 

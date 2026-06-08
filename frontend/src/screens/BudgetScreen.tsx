@@ -542,7 +542,7 @@ function BudgetScreen() {
               {/* Detailed Bills Expansion Rows */}
               <tr>
                 <td colSpan={WINDOW_SIZE + 1} style={{ padding: '16px 12px 6px 12px', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
-                  Granular Outgoings Propagation
+                  Outgoing Detail
                 </td>
               </tr>
 
@@ -577,7 +577,10 @@ function BudgetScreen() {
                           <span style={{ fontWeight: 500 }}>{billInfo.name}</span>
                           {isSaving && bill.target_account_id && (
                             <span style={{ fontSize: '10px', color: '#9ca3af' }}>
-                              → {bill.target_account_id}
+                              {(() => {
+                                const parts = bill.target_account_id.split(' - ');
+                                return parts.length > 1 ? parts.slice(1).join(' - ') : bill.target_account_id;
+                              })()}
                             </span>
                           )}
                           {!isSaving && !isOther && (
@@ -606,7 +609,7 @@ function BudgetScreen() {
                           className="matrix-td" 
                           style={{ 
                             textAlign: 'center', 
-                            color: isActive ? '#f9fafb' : '#374151',
+                            color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                             backgroundColor: idx === 12 ? 'rgba(99,102,241,0.02)' : 'transparent' 
                           }}
                         >
