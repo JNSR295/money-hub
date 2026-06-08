@@ -591,6 +591,9 @@ select.form-input option {
   cursor: pointer;
   transition: var(--transition-fast);
   color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  outline: none;
 }
 
 .toggle-option.active {

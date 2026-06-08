@@ -22,6 +22,8 @@ services:
     restart: always
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - PORT=5000
       - DATABASE_URL=postgresql://wealth_user:wealth_secure_password@db:5432/wealthhub
@@ -29,7 +31,6 @@ services:
       - SESSION_SECRET=supersecret_session_key_for_wealthhub
       - NODE_ENV=development
       - FRONTEND_URL=http://localhost:3002
-      - LOGODEV_API_KEY=${LOGODEV_API_KEY:-}
     depends_on:
       - db
 
